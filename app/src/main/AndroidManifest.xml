@@ -14,7 +14,7 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.ComposeUIChallenge">
         <activity
-            android:name=".ui.MainActivity"
+            android:name=".MainActivity"
             android:exported="true"
             android:theme="@style/Theme.ComposeUIChallenge">
             <intent-filter>

@@ -24,7 +24,7 @@ jobs:
               timeout-minutes: 6
 
             - name: Run Sanity Check tests
-              uses: speechify-recruiting/android-compose-ui-test-action@main
+              uses: example-recruiting/android-compose-ui-test-action@main
               id: android-compose-ui-test-action
               timeout-minutes: 5
               env:
