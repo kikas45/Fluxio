@@ -40,7 +40,7 @@ fun AppNavigation(
             ThemeRoute(
                 onContinue = {
                     // 👉 later: navigate to Home
-                    // navController.navigate(Constants.SCREEN_HOME)
+                     navController.navigate(Constants.RegisterUserEmail)
                 }
             )
         }

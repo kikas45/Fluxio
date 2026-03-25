@@ -36,7 +36,7 @@ fun ThemeToolBar(
 
             // 🔙 Back Button
             Icon(
-                painter = painterResource(id = R.drawable.ic_back_arrow),
+                painter = painterResource(id = R.drawable.arrow_back_24px),
                 contentDescription = "Back",
                 tint = tint,
                 modifier = Modifier
