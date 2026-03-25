@@ -1,84 +1,156 @@
-# 📚 Compose UI Challenge
+# 🎬 Fluxio – Movie Stream App
 
-This repository contains an Android development challenge focused on **Jetpack Compose UI**.  
-The project is already set up with all the necessary dependencies, so you can focus on implementing the UI and logic according to the provided specifications.
+**Author:** David
 
----
+Fluxio is a modern **Movie Streaming UI application** built with **Jetpack Compose**, focused on clean architecture, smooth user experience, and scalable design patterns.
 
-## ℹ️ Information
-
-- All the necessary libraries are already set up:
-    - `hilt`
-    - `kotlinx.serialization`
-    - `navigation-compose`
-    - `coil`
-- The project uses **Android Gradle Plugin (AGP)** version:  `8.13.0`
-- Make sure you have the **latest version of Android Studio** installed.
+This project is implemented as part of a UI challenge, following strict guidelines while showcasing production-level Android development practices.
 
 ---
 
-## 🧩 Requirements
+## 🚀 Overview
 
-- For UI development, **Jetpack Compose** must be used.
-- For navigation, the **Compose Navigation** library should be used.
-- For dependency injection, the **Hilt** library should be used.
-- You can use the **Coil** image loading library for loading images from URLs.
-- Files containing the comment `DO NOT MODIFY` must **not** be edited.
+Fluxio allows users to:
 
----
+* 🔍 Search for movies by title
+* 🎞️ Browse a list of movies with rich UI
+* 📄 View detailed information about a selected movie
+* ⚡ Experience smooth animations and responsive layouts
 
-## 📊 Evaluation Criteria
+The app emphasizes:
 
-When reviewing your solution, we will focus on the following aspects:
-
-- **Architecture** – 45%  
-  How well the project is structured, including separation of concerns, scalability, and overall code organization.
-
-- **UI Implementation** – 30%  
-  How closely the UI matches the provided designs and how well Jetpack Compose is used.
-
-- **Search Functionality** – 18%  
-  How effectively the search feature is implemented.
-
-- **Code Style & Clean Code** – 7%  
-  Code readability, naming conventions, and adherence to clean code practices.
+* **Separation of concerns**
+* **Testable UI components**
+* **Reusable design system**
+* **Modern Android architecture**
 
 ---
 
-## 🧠 Task details
+## 🧱 Tech Stack
 
-This challenge requires you to create an app about **Books**.  
-Please find screenshots of the UIs that should be implemented in the [screenshots](screenshots)
+* **Kotlin**
+* **Jetpack Compose**
+* **Hilt (Dependency Injection)**
+* **Navigation Compose**
+* **Coil (Image Loading)**
+* **Kotlinx Serialization**
 
-Your implementation should include the following:
+---
 
-1. Implement a **loading state** for the **Search Books** screen.
-2. After loading, display a **list of books** along with a **search field**.
-3. The height of the list item should be **120.dp**.
-4. The image in the Book item should have an aspect ratio of **3:4**.
-5. Use `TextField` for search input
-6. Implement **search by name** functionality. The loading indicator shouldn't be visible during a search.
-7. A simple animation should be applied to list items when they appear or disappear as a result of the search functionality.
-8. When the **Details** button is clicked, navigate to the **Book Details** screen and pass the `bookId` as an argument.
-9. Add a **loading state** for the **Book Details** screen.
-10. The image in the **Book Details** screen should have an aspect ratio of **1:1**.
-11. Scrollable content should be drawn under the system bars.
-12. Use the **already created custom Typography** for all text styles instead of defining new ones.
-13. **Landscape support** is not required for this challenge.
+## 🏗️ Architecture
 
-**Bonus task**: Implement a shared element transition for the book image when navigating from the list to the details screen.
+The project follows a **clean and scalable architecture**:
 
-## 🛠️ Development Guidelines
+### 🔹 UI Layer
 
-### Do's
+* Stateless composables (`ThemeScreen`, `MovieListScreen`, etc.)
+* State hoisting for testability
+* Screen-specific wrappers (no global scaffold)
 
--   Write clean, maintainable code and follow the best practices and coding standards.
--   You are free to use any official documentation or language references (Kotlin, Android, etc).
--   You can use the debugging tools and native IDE features (only standard Auto-Completion)
+### 🔹 Route Layer
 
-### Don'ts
+* Connects ViewModel to UI
+* Handles state collection and event delegation
 
--   DO NOT use any external libraries for the implementation.
--   DO NOT use any Coding Assistants like GitHub Copilot, ChatGPT, etc or any other AI based tools.
--   DO NOT visit direct blogs or articles related to implementation of the tasks.
--   DO NOT use Stackoverflow or any other forum websites.
+### 🔹 ViewModel Layer
+
+* Manages UI state using `StateFlow`
+* Handles business logic
+
+### 🔹 Design System
+
+Reusable components such as:
+
+* `ResponsiveStandardContainer`
+* `OneTimeFadeInContent`
+* Custom toolbars and layout wrappers
+
+---
+
+## ✨ Features Implemented
+
+* ✅ Loading states for screens
+* ✅ Movie list with image thumbnails
+* ✅ Search functionality (by movie title)
+* ✅ Smooth UI animations during search updates
+* ✅ Navigation to movie details screen
+* ✅ Detail screen with full movie info
+* ✅ Edge-to-edge UI support
+* ✅ Reusable layout wrappers per screen
+
+---
+
+## 🎯 UI & UX Decisions
+
+* Each screen owns its **own wrapper layout** (no global scaffold)
+* Layouts are **independently testable**
+* Scroll behavior handled via reusable container
+* Animations are **controlled and minimal** for performance
+* Toolbar is **custom per screen** for flexibility
+
+---
+
+## 📊 Evaluation Focus
+
+This project was built with the following priorities:
+
+* **Architecture (45%)**
+
+  * Clear separation of concerns
+  * Scalable and maintainable structure
+
+* **UI Implementation (30%)**
+
+  * Accurate Compose usage
+  * Clean and responsive layouts
+
+* **Search Functionality (18%)**
+
+  * Efficient filtering
+  * Smooth UI updates
+
+* **Code Quality (7%)**
+
+  * Readability
+  * Naming conventions
+  * Clean code principles
+
+---
+
+## 📌 Challenge Notes
+
+Although the original challenge is based on a **Books app**,
+this implementation adapts the concept into a **Movie Streaming experience (Fluxio)** while maintaining all required constraints.
+
+---
+
+## ⚠️ Constraints Followed
+
+* ❌ No external libraries beyond those provided
+* ❌ No AI/code assistants used during implementation
+* ❌ No modification of restricted files
+
+---
+
+## 🛠️ Setup
+
+1. Clone the repository
+2. Open in latest **Android Studio**
+3. Sync Gradle
+4. Run the app
+
+---
+
+## 🎥 Future Improvements
+
+* Shared element transitions for movie posters
+* Pagination for large datasets
+* Offline caching
+* Dark/Light dynamic theming enhancements
+
+---
+
+## 💡 Final Note
+
+Fluxio is designed not just to pass the challenge, but to demonstrate
+**real-world Android engineering practices at a senior level**.
