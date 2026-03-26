@@ -9,8 +9,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import com.example.inprideexchange.appThemeScreen.ThemeDataStore
+import com.example.inprideexchange.ui.components.buttons.SmartProgressBarButton
 import com.example.inprideexchange.ui.designsystem.dimens.AppDimens
-import com.example.inprideexchange.ui.theme.ThemeUiState
 
 @Composable
 fun ThemeScreen(
@@ -62,7 +62,7 @@ fun ThemeScreen(
             verticalArrangement = Arrangement.Center
         ) {
 
-           // Text(text = "Appearance", style = MaterialTheme.typography.titleLarge)
+            // Text(text = "Appearance", style = MaterialTheme.typography.titleLarge)
 
             Spacer(Modifier.height(AppDimens.PaddingMedium))
 
@@ -103,12 +103,27 @@ fun ThemeScreen(
 
             Spacer(Modifier.height(AppDimens.PaddingLarge))
 
-            Button(
-                onClick = onContinue,
+            /*            Button(
+                            onClick = onContinue,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Continue")
+                        }*/
+
+
+
+            SmartProgressBarButton(
+                text = "Continue with phone",
+                isEnabled = true,
+                isLoading = false,
+
+                onClick = {
+                },
+
                 modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Continue")
-            }
+            )
+
+
         }
     }
 }

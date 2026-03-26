@@ -1,4 +1,4 @@
-package com.example.inprideexchange.ui.designsystem.components
+package com.example.inprideexchange.ui.components.uiRenders
 
 import android.content.res.Configuration
 import androidx.compose.foundation.layout.BoxWithConstraints

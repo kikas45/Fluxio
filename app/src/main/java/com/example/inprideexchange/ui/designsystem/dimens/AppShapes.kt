@@ -7,10 +7,10 @@ object AppShapes {
 
     // 🎯 Common corner radii
     val Round4dp = RoundedCornerShape(4.dp)
-    val Round6dp = androidx.compose.foundation.shape.RoundedCornerShape(6.dp)
-    val RoundMedium = androidx.compose.foundation.shape.RoundedCornerShape(8.dp)
-    val Rounded12 = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
-    val Rounded16 = androidx.compose.foundation.shape.RoundedCornerShape(16.dp)
-    val Circle = androidx.compose.foundation.shape.RoundedCornerShape(50)
+    val Round6dp = RoundedCornerShape(6.dp)
+    val RoundMedium = RoundedCornerShape(8.dp)
+    val Rounded12 = RoundedCornerShape(12.dp)
+    val Rounded16 = RoundedCornerShape(16.dp)
+    val Circle = RoundedCornerShape(50)
 
 }

@@ -12,8 +12,8 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.ui.unit.dp
 import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.constraintlayout.compose.Dimension
-import com.example.inprideexchange.ui.designsystem.components.OneTimeFadeInContent
-import com.example.inprideexchange.ui.designsystem.components.ResponsiveStandardContainer
+import com.example.inprideexchange.ui.components.uiRenders.OneTimeFadeInContent
+import com.example.inprideexchange.ui.components.uiRenders.ResponsiveStandardContainer
 
 
 @Composable

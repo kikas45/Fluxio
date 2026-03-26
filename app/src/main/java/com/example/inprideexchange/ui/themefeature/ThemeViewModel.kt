@@ -4,7 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.inprideexchange.appThemeScreen.ThemeDataStore
 import com.example.inprideexchange.data.theme.ThemeRepository
-import com.example.inprideexchange.ui.theme.ThemeUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch

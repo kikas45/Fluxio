@@ -1,4 +1,4 @@
-package com.example.inprideexchange.ui.designsystem.components
+package com.example.inprideexchange.ui.components.uiRenders
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.core.tween

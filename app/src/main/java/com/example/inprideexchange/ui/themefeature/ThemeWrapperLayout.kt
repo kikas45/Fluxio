@@ -1,7 +1,7 @@
 package com.example.inprideexchange.ui.themefeature
 
-import com.example.inprideexchange.ui.designsystem.components.OneTimeFadeInContent
-import com.example.inprideexchange.ui.designsystem.components.ResponsiveStandardContainer
+import com.example.inprideexchange.ui.components.uiRenders.OneTimeFadeInContent
+import com.example.inprideexchange.ui.components.uiRenders.ResponsiveStandardContainer
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface

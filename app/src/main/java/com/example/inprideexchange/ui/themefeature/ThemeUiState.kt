@@ -1,4 +1,5 @@
-package com.example.inprideexchange.ui.theme
+package com.example.inprideexchange.ui.themefeature
+
 import com.example.inprideexchange.appThemeScreen.ThemeDataStore
 
 data class ThemeUiState(
