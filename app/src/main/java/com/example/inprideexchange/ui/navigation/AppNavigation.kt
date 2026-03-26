@@ -12,6 +12,7 @@ import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.runtime.Composable
 import com.example.inprideexchange.ui.registerfeature.RegisterUserEmail
 import com.example.inprideexchange.ui.themefeature.ThemeRoute
+import com.example.inprideexchange.ui.welcomefeature.WelcomeScreen
 
 
 @OptIn(ExperimentalAnimationApi::class)
@@ -22,7 +23,7 @@ fun AppNavigation(
 
     NavHost(
         navController = navController,
-        startDestination = Constants.SCREEN_THEME,
+        startDestination = Constants.WelcomeScreen,
 
         modifier = Modifier
             .fillMaxSize()
@@ -48,5 +49,19 @@ fun AppNavigation(
         composable(Constants.RegisterUserEmail) {
             RegisterUserEmail()
         }
+
+
+        composable(Constants.WelcomeScreen) {
+            WelcomeScreen(
+                onPhoneClick ={
+                    navController.navigate(Constants.RegisterUserEmail)
+                },
+                onGoogleClick = {
+                    navController.navigate(Constants.SCREEN_THEME)
+                },
+                isLoading = false
+            )
+        }
+
     }
 }

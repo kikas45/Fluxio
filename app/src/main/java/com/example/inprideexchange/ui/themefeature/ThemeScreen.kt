@@ -2,6 +2,7 @@ package com.example.inprideexchange.ui.themefeature
 
 import android.os.Build
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
@@ -57,9 +58,9 @@ fun ThemeScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState()) //  important for scrolling state
+                .verticalScroll(rememberScrollState())
                 .padding(AppDimens.PaddingLarge),
-            verticalArrangement = Arrangement.Center
+            verticalArrangement = Arrangement.Top
         ) {
 
             // Text(text = "Appearance", style = MaterialTheme.typography.titleLarge)

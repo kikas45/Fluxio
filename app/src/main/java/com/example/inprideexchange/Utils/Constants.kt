@@ -10,6 +10,7 @@ object Constants {
 
     const val SCREEN_THEME = "themeScreen"
     const val RegisterUserEmail = "RegisterUserEmail"
+    const val WelcomeScreen = "WelcomeScreen"
 
 
 
