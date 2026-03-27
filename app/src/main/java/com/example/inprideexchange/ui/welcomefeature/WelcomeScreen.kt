@@ -3,11 +3,11 @@ package com.example.inprideexchange.ui.welcomefeature
 import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -17,16 +17,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.inprideexchange.R
 import com.example.inprideexchange.ui.components.buttons.GoogleSmartButton
 import com.example.inprideexchange.ui.designsystem.dimens.AppDimens
-
 
 @Composable
 fun WelcomeScreen(
@@ -37,31 +34,46 @@ fun WelcomeScreen(
 
     val context = LocalContext.current
 
+    val pages = remember {
+        listOf(
+            OnboardingItem(
+                image = R.drawable.trading,
+                title = "Trade Smarter, Not Harder",
+                subtitle = "Get accurate forex signals, real-time market insights, and expert analysis"
+            ),
+            OnboardingItem(
+                image = R.drawable.exchange,
+                title = "Stay Ahead of the Market",
+                subtitle = "Track news, trends, and deep technical breakdowns before others react"
+            )
+        )
+    }
+
+    val pagerState = rememberPagerState(pageCount = { pages.size })
 
     Surface(
         modifier = Modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background
     ) {
 
-
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(WindowInsets.safeDrawing.asPaddingValues())
-                .verticalScroll(rememberScrollState())
-                .padding(AppDimens.PaddingLarge),
+                .padding(AppDimens.PaddingMedium),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
 
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(5.dp))
 
-            // 🔹 Logo + App Name
+            // 🔹 Logo
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
                     modifier = Modifier
                         .size(32.dp)
                         .clip(RoundedCornerShape(8.dp))
-                        .background(Color(0xFFB7F400)),
+                       /// .background(Color(0xFFB7F400)),
+                        .background(MaterialTheme.colorScheme.primary),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
@@ -69,7 +81,8 @@ fun WelcomeScreen(
                         style = MaterialTheme.typography.bodyMedium.copy(
                             fontWeight = FontWeight.Bold
                         ),
-                        color = Color.Black
+                        color = MaterialTheme.colorScheme.surface
+                         //     color = Color.Black
                     )
                 }
 
@@ -83,86 +96,66 @@ fun WelcomeScreen(
                 )
             }
 
-            Spacer(modifier = Modifier.height(40.dp))
+            Spacer(modifier = Modifier.height(50.dp))
 
-            // 🔹 Illustration (replace with your drawable)
-            Image(
-                painter = painterResource(id = R.drawable.ic_launcher_background),
-                contentDescription = null,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(220.dp),
-                contentScale = ContentScale.Fit
-            )
+            // 🔥 Pager
 
-            Spacer(modifier = Modifier.height(32.dp))
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier.fillMaxWidth()
+            ) { page ->
 
-            // 🔹 Title
-            Text(
-                text = "Your app for fair deals",
-                style = MaterialTheme.typography.titleLarge.copy(
-                    fontWeight = FontWeight.Bold
-                ),
-                textAlign = TextAlign.Center
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // 🔹 Subtitle
-            Text(
-                text = "Choose rides that are right for you",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center
-            )
+                key(page) { // 🔥 REQUIRED FIX
+                    OnboardingPage(item = pages[page])
+                }
+            }
 
 
-            //// from here downward is correct
+
 
 
             Spacer(modifier = Modifier.weight(1f))
 
-
             Spacer(modifier = Modifier.height(16.dp))
 
-            // 🔹 Google Button (custom styled)
+            // 🔹 Indicator
+            PagerIndicator(
+                pageCount = pages.size,
+                currentPage = pagerState.currentPage
+            )
+            Spacer(modifier = Modifier.height(40.dp))
+
+            // 🔹 Button
             GoogleSmartButton(
                 text = "Continue with Google",
-                isEnabled = true,
-                isLoading = false,
+                isEnabled = !isLoading,
+                isLoading = isLoading,
                 onClick = onGoogleClick
             )
 
             Spacer(modifier = Modifier.height(30.dp))
 
-
-            // 🔹 Terms text
             TermsText(
                 onTermsClick = {
                     Toast.makeText(context, "onTermsClick", Toast.LENGTH_SHORT).show()
                 },
-
-
                 onPrivacyClick = {
                     Toast.makeText(context, "onPrivacyClick", Toast.LENGTH_SHORT).show()
-
                 }
             )
 
             Spacer(modifier = Modifier.height(30.dp))
-
         }
     }
 }
 
+
 @Preview
 @Composable
 fun WelcomeScreenPreview() {
-
     WelcomeScreen(
         onPhoneClick = {},
         onGoogleClick = {},
         isLoading = false
     )
-
 }

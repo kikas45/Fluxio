@@ -3,11 +3,11 @@ package com.example.inprideexchange.ui.welcomefeature
 import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -17,16 +17,19 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.inprideexchange.R
 import com.example.inprideexchange.ui.components.buttons.GoogleSmartButton
 import com.example.inprideexchange.ui.designsystem.dimens.AppDimens
 
+data class OnboardingItem(
+    val image: Int,
+    val title: String,
+    val subtitle: String
+)
 
 @Composable
 fun WelcomeScreen(
@@ -37,18 +40,35 @@ fun WelcomeScreen(
 
     val context = LocalContext.current
 
+    val pages = listOf(
+        OnboardingItem(
+            R.drawable.ic_launcher_background,
+            "Your app for fair deals",
+            "Choose rides that are right for you"
+        ),
+        OnboardingItem(
+            R.drawable.ic_launcher_background,
+            "Fast & Reliable",
+            "Get matched instantly with trusted vendors"
+        ),
+        OnboardingItem(
+            R.drawable.ic_launcher_background,
+            "Secure Payments",
+            "Pay safely and track all transactions"
+        )
+    )
+
+    val pagerState = rememberPagerState(pageCount = { pages.size })
 
     Surface(
         modifier = Modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background
     ) {
 
-
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(WindowInsets.safeDrawing.asPaddingValues())
-                .verticalScroll(rememberScrollState())
                 .padding(AppDimens.PaddingLarge),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
@@ -85,82 +105,98 @@ fun WelcomeScreen(
 
             Spacer(modifier = Modifier.height(40.dp))
 
+            // 🔥 ONBOARDING PAGER
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier.fillMaxWidth()
+            ) { page ->
 
+                val item = pages[page]
 
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
 
+                    Image(
+                        painter = painterResource(id = item.image),
+                        contentDescription = null,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(220.dp),
+                        contentScale = ContentScale.Fit
+                    )
 
+                    Spacer(modifier = Modifier.height(32.dp))
 
+                    Text(
+                        text = item.title,
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            fontWeight = FontWeight.Bold
+                        ),
+                        textAlign = TextAlign.Center
+                    )
 
-            // 🔹 Illustration (replace with your drawable)
-            Image(
-                painter = painterResource(id = R.drawable.ic_launcher_background),
-                contentDescription = null,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(220.dp),
-                contentScale = ContentScale.Fit
-            )
+                    Spacer(modifier = Modifier.height(8.dp))
 
-            Spacer(modifier = Modifier.height(32.dp))
+                    Text(
+                        text = item.subtitle,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
 
-            // 🔹 Title
-            Text(
-                text = "Your app for fair deals",
-                style = MaterialTheme.typography.titleLarge.copy(
-                    fontWeight = FontWeight.Bold
-                ),
-                textAlign = TextAlign.Center
-            )
+            // 🔹 DOT INDICATOR
+            Spacer(modifier = Modifier.height(24.dp))
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                horizontalArrangement = Arrangement.Center,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                repeat(pages.size) { index ->
+                    val isSelected = pagerState.currentPage == index
 
-            // 🔹 Subtitle
-            Text(
-                text = "Choose rides that are right for you",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center
-            )
-
-
-
-
-            //// from here downward is correct
-
-
-
+                    Box(
+                        modifier = Modifier
+                            .padding(4.dp)
+                            .size(if (isSelected) 10.dp else 8.dp)
+                            .clip(CircleShape)
+                            .background(
+                                if (isSelected)
+                                    MaterialTheme.colorScheme.primary
+                                else
+                                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+                            )
+                    )
+                }
+            }
 
             Spacer(modifier = Modifier.weight(1f))
 
-
             Spacer(modifier = Modifier.height(16.dp))
 
-            // 🔹 Google Button (custom styled)
+            // 🔹 Google Button
             GoogleSmartButton(
                 text = "Continue with Google",
-                isEnabled = true,
-                isLoading = false,
+                isEnabled = !isLoading,
+                isLoading = isLoading,
                 onClick = onGoogleClick
             )
 
             Spacer(modifier = Modifier.height(30.dp))
-
 
             // 🔹 Terms text
             TermsText(
                 onTermsClick = {
                     Toast.makeText(context, "onTermsClick", Toast.LENGTH_SHORT).show()
                 },
-
-
                 onPrivacyClick = {
                     Toast.makeText(context, "onPrivacyClick", Toast.LENGTH_SHORT).show()
-
                 }
             )
 
             Spacer(modifier = Modifier.height(30.dp))
-
         }
     }
 }
@@ -168,11 +204,9 @@ fun WelcomeScreen(
 @Preview
 @Composable
 fun WelcomeScreenPreview() {
-
     WelcomeScreen(
         onPhoneClick = {},
         onGoogleClick = {},
         isLoading = false
     )
-
 }
