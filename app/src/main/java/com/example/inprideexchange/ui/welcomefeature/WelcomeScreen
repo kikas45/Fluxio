@@ -19,6 +19,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.example.inprideexchange.ui.components.buttons.SmartProgressBarButton
 import com.example.inprideexchange.R
 import com.example.inprideexchange.ui.components.buttons.GoogleSmartButton
 import com.example.inprideexchange.ui.designsystem.dimens.AppDimens
@@ -116,12 +117,24 @@ fun WelcomeScreen(
             // 🔹 Google Button (custom styled)
             GoogleSmartButton(
                 text = "Continue with Google",
-                isEnabled = true,
-                isLoading = false,
+                isEnabled = false,
+                isLoading = true,
                 onClick = onPhoneClick
             )
 
             Spacer(modifier = Modifier.height(30.dp))
+
+
+
+  /*          SmartProgressBarButton(
+                text = "Continue with phone",
+                isEnabled = true,
+                isLoading = isLoading,
+                onClick = onPhoneClick
+            )*/
+
+
+
 
 
             // 🔹 Terms text

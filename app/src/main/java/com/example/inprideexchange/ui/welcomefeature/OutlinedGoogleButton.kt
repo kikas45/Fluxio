@@ -31,7 +31,7 @@ fun OutlinedGoogleButton(
     ) {
 
         Image(
-            painter = painterResource(id = R.drawable.ic_launcher_background),
+            painter = painterResource(id = R.drawable.google_icon),
             contentDescription = "Google",
             modifier = Modifier.size(18.dp)
         )
