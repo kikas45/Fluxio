@@ -1,0 +1,75 @@
+package com.example.inprideexchange.ui.splashScreen
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.tooling.preview.Preview
+import kotlinx.coroutines.delay
+
+@Composable
+fun SplashScreen(onFinished: () -> Unit) {
+    // State to control visibility of the progress indicator
+    var showProgress by remember { mutableStateOf(false) }
+
+    // Launch a coroutine to show the progress after a delay
+    LaunchedEffect(Unit) {
+        delay(2000) // wait for 2 seconds
+        showProgress = true
+        onFinished()
+    }
+
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.background
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(WindowInsets.safeDrawing.asPaddingValues())
+        ) {
+            // Center circular logo
+            Box(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .size(120.dp)
+                    .shadow(8.dp, CircleShape)
+                    .background(MaterialTheme.colorScheme.primary, CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "M25",
+                    fontSize = 36.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onPrimary
+                )
+            }
+
+            // Circular progress indicator at top-right corner, delayed visibility
+            if (showProgress) {
+                CircularProgressIndicator(
+                    modifier = Modifier
+                        .size(28.dp)
+                        .align(Alignment.TopEnd)
+                        .padding(16.dp),
+                    color = Color.Red,
+                    strokeWidth = 3.dp
+                )
+            }
+        }
+    }
+}
+
+@Preview
+@Composable
+fun SplashScreenPreview() {
+    SplashScreen(onFinished = {})
+}

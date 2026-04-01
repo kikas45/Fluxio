@@ -55,6 +55,7 @@ dependencies {
     implementation(libs.androidx.navigation.compose)
     implementation(libs.hilt.android)
     implementation(libs.androidx.compose.foundation.layout)
+    implementation(libs.androidx.foundation.layout)
     ksp(libs.hilt.android.compiler)
     implementation(libs.hilt.navigation.compose)
     implementation(libs.kotlinx.serialization.json)
@@ -138,7 +139,12 @@ dependencies {
 
 
 
+    // for splash screen
+    implementation ("androidx.core:core-splashscreen:1.0.1")
 
+
+    // special case for material 3
+    implementation("com.google.android.material:material:1.12.0")
 
 
 }

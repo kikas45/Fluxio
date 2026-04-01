@@ -7,7 +7,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalContext
 import com.example.inprideexchange.appThemeScreen.ThemeDataStore
-import com.example.inprideexchange.ui.designsystem.typography.AppTypography
+import com.example.inprideexchange.ui.designSystem.typography.AppTypography
 
 
 @Composable

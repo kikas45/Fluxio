@@ -10,9 +10,11 @@ import androidx.navigation.compose.composable
 import com.example.inprideexchange.Utils.Constants
 import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.runtime.Composable
-import com.example.inprideexchange.ui.registerfeature.RegisterUserEmail
-import com.example.inprideexchange.ui.themefeature.ThemeRoute
-import com.example.inprideexchange.ui.welcomefeature.WelcomeScreen
+import com.example.inprideexchange.AppScreens.UserReg.SplashScreen
+import com.example.inprideexchange.AppScreens.UserReg.WelcomeScreen
+import com.example.inprideexchange.ui.registerScreen.RegisterUserEmail
+import com.example.inprideexchange.ui.themeScreen.ThemeRoute
+
 
 
 @OptIn(ExperimentalAnimationApi::class)
@@ -23,7 +25,7 @@ fun AppNavigation(
 
     NavHost(
         navController = navController,
-        startDestination = Constants.WelcomeScreen,
+        startDestination = Constants.SplashScreen,
 
         modifier = Modifier
             .fillMaxSize()
@@ -35,6 +37,18 @@ fun AppNavigation(
         popEnterTransition = ProtonNavAnimation.popEnter,
         popExitTransition = ProtonNavAnimation.popExit
     ) {
+
+
+
+        composable(Constants.SplashScreen) {
+            SplashScreen(
+                onFinished ={
+                    navController.navigate(Constants.WelcomeScreen)
+                }
+            )
+        }
+
+
 
         // ✅ Theme Screen (First screen)
         composable(Constants.SCREEN_THEME) {
@@ -62,6 +76,9 @@ fun AppNavigation(
                 isLoading = false
             )
         }
+
+
+
 
     }
 }

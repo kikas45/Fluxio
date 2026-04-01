@@ -11,6 +11,7 @@ object Constants {
     const val SCREEN_THEME = "themeScreen"
     const val RegisterUserEmail = "RegisterUserEmail"
     const val WelcomeScreen = "WelcomeScreen"
+    const val SplashScreen = "SplashScreen"
 
 
 

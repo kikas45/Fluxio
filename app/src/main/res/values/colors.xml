@@ -7,4 +7,24 @@
     <color name="teal_700">#FF018786</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+    <color name="whiteWash">#BABABA</color>
+    <color name="deep_blue_v2">#2E6693</color>
+
+    <color name="blue_deep">#0C67C4</color>
+    <color name="orange_deep">#DF4308</color>
+
+    <color name="splash_bg">#FFFFFF</color>
+    <color name="transparent">#00000000</color>
+    // let define our materila coors
+
+
+
+
+
+    <color name="light_gold">#F57C00</color>
+    <color name="light_gold_wash">#774803</color>
+    <color name="light_gold_wash_v2">#F6B24F</color>
+    <color name="light_gold_wash_v2_dark_btn">#774803</color>
+
+
 </resources>
