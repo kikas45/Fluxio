@@ -19,6 +19,11 @@ object Constants {
     const val Trips = "trips"
     const val Messages = "messages"
     const val Profile = "profile"
+    const val SampleScreen = "SampleScreen"
+
+    const val ScreenA = "ScreenA"
+    const val ScreenB = "ScreenB"
+    const val ScreenC = "ScreenC"
 
 
 

@@ -12,7 +12,8 @@ import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.runtime.Composable
 import com.example.inprideexchange.AppScreens.UserReg.SplashScreen
 import com.example.inprideexchange.AppScreens.UserReg.WelcomeScreen
-import com.example.inprideexchange.ui.BottomBar.MainScreen
+import com.example.inprideexchange.ui.BottomBar.bottomBarrFeatures.MainScreen
+import com.example.inprideexchange.ui.sampleScreen.SampleScreen
 import com.example.inprideexchange.ui.registerScreen.RegisterUserEmail
 import com.example.inprideexchange.ui.themeScreen.ThemeRoute
 
@@ -50,11 +51,6 @@ fun AppNavigation(
         }
 
 
-        composable(Constants.MainScreen) {
-            MainScreen()
-        }
-
-
 
         // ✅ Theme Screen (First screen)
         composable(Constants.SCREEN_THEME) {
@@ -88,6 +84,26 @@ fun AppNavigation(
                 isLoading = false
             )
         }
+
+
+
+
+        ////  Down Below , we shall now be working With Bottom Bar and how to Navigate Outside it
+
+
+        // Main screen with bottom bar, we pass NavController to it and it then manage Bottom bar
+        composable(Constants.MainScreen) {
+            MainScreen(topNavController = navController)
+        }
+
+        // Full-screen screen, outside bottom bar
+        composable(Constants.SampleScreen) {
+            SampleScreen()
+        }
+
+
+
+
 
 
     }
