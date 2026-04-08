@@ -12,6 +12,7 @@ import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.runtime.Composable
 import com.example.inprideexchange.AppScreens.UserReg.SplashScreen
 import com.example.inprideexchange.AppScreens.UserReg.WelcomeScreen
+import com.example.inprideexchange.ui.BottomBar.MainScreen
 import com.example.inprideexchange.ui.registerScreen.RegisterUserEmail
 import com.example.inprideexchange.ui.themeScreen.ThemeRoute
 
@@ -49,6 +50,11 @@ fun AppNavigation(
         }
 
 
+        composable(Constants.MainScreen) {
+            MainScreen()
+        }
+
+
 
         // ✅ Theme Screen (First screen)
         composable(Constants.SCREEN_THEME) {
@@ -65,19 +71,23 @@ fun AppNavigation(
         }
 
 
+
         composable(Constants.WelcomeScreen) {
             WelcomeScreen(
-                onPhoneClick ={
+                onPhoneClick = {
                     navController.navigate(Constants.RegisterUserEmail)
                 },
                 onGoogleClick = {
                     navController.navigate(Constants.SCREEN_THEME)
                 },
+                onSkip = {
+                    navController.navigate(Constants.MainScreen) {
+                        popUpTo(Constants.WelcomeScreen) { inclusive = true }
+                    }
+                },
                 isLoading = false
             )
         }
-
-
 
 
     }

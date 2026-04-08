@@ -3,10 +3,8 @@ package com.example.inprideexchange.AppScreens.UserReg
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -33,13 +31,13 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.TextButton
+
 
 @Composable
 fun WelcomeScreen(
     onPhoneClick: () -> Unit,
     onGoogleClick: () -> Unit,
+    onSkip: () -> Unit,   // ✅ NEW
     isLoading: Boolean = false
 ) {
     val colorScheme = MaterialTheme.colorScheme
@@ -74,9 +72,7 @@ fun WelcomeScreen(
 
 
             IconButton(
-                onClick = {
-                    if (context is ComponentActivity) context.finish()
-                },
+                onClick = onSkip,
                 modifier = Modifier
                     .constrainAs(closeRef) {
                         top.linkTo(parent.top, margin = 0.dp) // adaptive safe margin
@@ -90,103 +86,6 @@ fun WelcomeScreen(
                     tint = colorScheme.onBackground
                 )
             }
-
-
-
-
-
-
-/*
-            Surface(
-                shape = CircleShape,
-                shadowElevation = 4.dp,
-                color = MaterialTheme.colorScheme.background,
-                modifier = Modifier
-                    .size(36.dp) 
-                    .border(
-                        width = 1.dp,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        shape = CircleShape
-                    )
-                    .constrainAs(closeRef) {
-                        top.linkTo(parent.top, margin = 0.dp)
-                        end.linkTo(parent.end, margin = 0.dp)
-                    }
-            ) {
-                IconButton(
-                    onClick = { */
-/* handle close *//*
- },
-                    modifier = Modifier.size(36.dp) // icon button fills the surface
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = "Close",
-                        tint = MaterialTheme.colorScheme.onSurface
-                    )
-                }
-            }
-
-*/
-
-
-
-
-
-
-
-/*
-         Surface(
-                shape = CircleShape,
-
-                shadowElevation = 4.dp, // gives elevation/shadow
-                color = MaterialTheme.colorScheme.background,
-                modifier = Modifier.constrainAs(closeRef) {
-                    top.linkTo(parent.top, margin = 0.dp)
-                    end.linkTo(parent.end, margin = 0.dp)
-                }
-            ) {
-                IconButton(
-                    onClick = {  },
-                    modifier = Modifier.size(32.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = "Close",
-                        tint = MaterialTheme.colorScheme.onSurface
-                    )
-                }
-            }
-
-*/
-
-
-/*
-            TextButton(
-                onClick = {},
-                shape = CircleShape,
-                colors = ButtonDefaults.textButtonColors(
-                    containerColor = MaterialTheme.colorScheme.surface, // background
-                    contentColor = MaterialTheme.colorScheme.primary      // text color
-                ),
-                modifier = Modifier.constrainAs(closeRef) {
-                    top.linkTo(parent.top, margin = 0.dp)
-                    end.linkTo(parent.end, margin = 0.dp)
-                }
-            ) {
-                Text(
-                    text = "Skip",
-                    style = MaterialTheme.typography.bodyMedium.copy(
-                        fontWeight = FontWeight.Medium
-                    )
-                )
-            }
-
-
-*/
-
-
-
 
 
 
@@ -323,5 +222,5 @@ fun WelcomeScreen(
 @Preview
 @Composable
 fun WelcomeScreenPreview() {
-    WelcomeScreen(onPhoneClick = {}, onGoogleClick = {}, isLoading = false)
+    WelcomeScreen(onPhoneClick = {}, onGoogleClick = {}, onSkip = {}, isLoading = false)
 }

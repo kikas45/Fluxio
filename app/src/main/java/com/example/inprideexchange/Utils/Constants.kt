@@ -13,7 +13,12 @@ object Constants {
     const val WelcomeScreen = "WelcomeScreen"
     const val SplashScreen = "SplashScreen"
 
-
+    const val MainScreen = "main_screen"
+    const val Explore = "explore"
+    const val Wishlist = "wishlist"
+    const val Trips = "trips"
+    const val Messages = "messages"
+    const val Profile = "profile"
 
 
 
