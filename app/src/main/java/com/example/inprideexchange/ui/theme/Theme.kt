@@ -46,13 +46,35 @@ fun InPrideExchangeTheme(
     CompositionLocalProvider(
         LocalIsDarkTheme provides darkTheme
     ) {
+
+
         MaterialTheme(
+            colorScheme = colors,
+            typography = AppTypography
+        ) {
+            // Default app-wide system color
+            SetSystemBarsColor(
+                statusBarColor = colors.background,
+                navigationBarColor = colors.background
+            )
+
+            content()
+        }
+
+
+
+ /*       MaterialTheme(
             colorScheme = colors,
             typography = AppTypography
         ) {
             SetSystemBarsColor()
             content()
         }
+
+        */
+
+
+
     }
 }
 

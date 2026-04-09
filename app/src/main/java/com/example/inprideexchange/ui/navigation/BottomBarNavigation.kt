@@ -31,7 +31,7 @@ fun BottomBarNavigation(
         composable(BottomNavItem.ScreenB.route) {
             WishlistScreen(
                 onNavigateToSampleScreen = {
-                    topNavController.navigate(Constants.SampleScreen)
+                    topNavController.navigate(Constants.SCREEN_THEME)
                 }
             )
         }
