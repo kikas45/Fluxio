@@ -37,7 +37,7 @@ fun AppBottomBar(
         )
 
         NavigationBar(
-            modifier = Modifier.height(97.dp),
+            modifier = Modifier.height(95.dp), // 🔥 reduce from default ~80dp
             tonalElevation = 0.dp,
             containerColor = MaterialTheme.colorScheme.background
         ) {
@@ -92,6 +92,87 @@ fun AppBottomBar(
                     colors = NavigationBarItemDefaults.colors(
                         indicatorColor = MaterialTheme.colorScheme.background,
                         selectedIconColor = animatedColor,
+                        unselectedIconColor = animatedColor
+                    )
+                )
+            }
+        }
+
+
+
+    }
+
+}
+
+
+
+
+
+/*@Composable
+fun AppBottomBar(
+    currentRoute: String?,
+    onItemClick: (BottomNavItem) -> Unit
+) {
+    val items = listOf(
+        BottomNavItem.ScreenA,
+        BottomNavItem.ScreenB,
+        BottomNavItem.ScreenC
+    )
+    Column {
+        // 🔥 Thin top divider (YouTube style)
+        Divider(
+            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f),
+            thickness = 0.5.dp
+        )
+
+        NavigationBar(
+            tonalElevation = 0.dp,
+            containerColor = MaterialTheme.colorScheme.background
+        ) {
+            items.forEach { item ->
+
+                val isSelected = currentRoute == item.route
+
+                val targetColor = if (isSelected) {
+                    MaterialTheme.colorScheme.onBackground
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.9f)
+                }
+
+                // 🎬 Smooth color animation
+                val animatedColor by animateColorAsState(
+                    targetValue = targetColor,
+                    label = "nav_item_color"
+                )
+
+                NavigationBarItem(
+                    selected = isSelected,
+                    onClick = { onItemClick(item) },
+
+                    icon = {
+                        Icon(
+                            painter = painterResource(
+                                id = if (isSelected) item.selectedIcon else item.unselectedIcon
+                            ),
+                            contentDescription = item.label,
+                            modifier = Modifier.size(22.dp),
+                            tint = animatedColor
+                        )
+                    },
+
+                    label = {
+                        Text(
+                            text = item.label,
+                            color = animatedColor,
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                            )
+                        )
+                    },
+
+                    colors = NavigationBarItemDefaults.colors(
+                        indicatorColor = MaterialTheme.colorScheme.background, // remove pill
+                        selectedIconColor = animatedColor,
                         unselectedIconColor = animatedColor,
                         selectedTextColor = animatedColor,
                         unselectedTextColor = animatedColor
@@ -99,6 +180,6 @@ fun AppBottomBar(
                 )
             }
         }
-
     }
-}
+
+}*/

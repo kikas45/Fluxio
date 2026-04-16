@@ -27,4 +27,12 @@ object Constants {
 
 
 
+    // Explore Tabs
+    const val ForYou = "for_you"
+    const val Following = "following"
+    const val Live = "live"
+    const val Search = "search"
+
+
+
 }

@@ -1,0 +1,85 @@
+package com.example.inprideexchange.ui.exploreScreenFeature
+
+object FakeFeedData {
+
+    val forYou = listOf(
+        FeedItem("1", "Luxury Apartment", "₦120,000 per night", ""),
+        FeedItem("2", "Beach House", "₦250,000 per night", ""),
+        FeedItem("2", "Beach House", "₦250,000 per night", ""),
+        FeedItem("2", "Beach House", "₦250,000 per night", ""),
+        FeedItem("2", "Beach House", "₦250,000 per night", ""),
+        FeedItem("2", "Beach House", "₦250,000 per night", ""),
+        FeedItem("2", "Beach House", "₦250,000 per night", ""),
+        FeedItem("2", "Beach House", "₦250,000 per night", ""),
+        FeedItem("2", "Beach House", "₦250,000 per night", ""),
+        FeedItem("2", "Beach House", "₦250,000 per night", ""),
+        FeedItem("2", "Beach House", "₦250,000 per night", ""),
+        FeedItem("2", "Beach House", "₦250,000 per night", ""),
+        FeedItem("2", "Beach House", "₦250,000 per night", ""),
+        FeedItem("2", "Beach House", "₦250,000 per night", ""),
+        FeedItem("2", "Beach House", "₦250,000 per night", ""),
+        FeedItem("2", "Beach House", "₦250,000 per night", ""),
+        FeedItem("2", "Beach House", "₦250,000 per night", ""),
+        FeedItem("2", "Beach House", "₦250,000 per night", ""),
+        FeedItem("2", "Beach House", "₦250,000 per night", ""),
+        FeedItem("2", "Beach House", "₦250,000 per night", ""),
+        FeedItem("2", "Beach House", "₦250,000 per night", ""),
+        FeedItem("2", "Beach House", "₦250,000 per night", ""),
+        FeedItem("2", "Beach House", "₦250,000 per night", ""),
+        FeedItem("2", "Beach House", "₦250,000 per night", ""),
+        FeedItem("2", "Beach House", "₦250,000 per night", ""),
+        FeedItem("2", "Beach House", "₦250,000 per night", ""),
+        FeedItem("2", "Beach House", "₦250,000 per night", ""),
+        FeedItem("2", "Beach House", "₦250,000 per night", ""),
+        FeedItem("2", "Beach House", "₦250,000 per night", ""),
+        FeedItem("2", "Beach House", "₦250,000 per night", ""),
+        FeedItem("2", "Beach House", "₦250,000 per night", ""),
+        FeedItem("2", "Beach House", "₦250,000 per night", ""),
+        FeedItem("2", "Beach House", "₦250,000 per night", ""),
+        FeedItem("2", "Beach House", "₦250,000 per night", ""),
+        FeedItem("2", "Beach House", "₦250,000 per night", ""),
+        FeedItem("2", "Beach House", "₦250,000 per night", ""),
+        FeedItem("2", "Beach House", "₦250,000 per night", ""),
+        FeedItem("2", "Beach House", "₦250,000 per night", ""),
+        FeedItem("2", "Beach House", "₦250,000 per night", ""),
+        FeedItem("2", "Beach House", "₦250,000 per night", ""),
+        FeedItem("2", "Beach House", "₦250,000 per night", ""),
+        FeedItem("2", "Beach House", "₦250,000 per night", ""),
+        FeedItem("2", "Beach House", "₦250,000 per night", ""),
+        FeedItem("2", "Beach House", "₦250,000 per night", ""),
+        FeedItem("2", "Beach House", "₦250,000 per night", ""),
+        FeedItem("2", "Beach House", "₦250,000 per night", ""),
+        FeedItem("2", "Beach House", "₦250,000 per night", ""),
+        FeedItem("2", "Beach House", "₦250,000 per night", ""),
+        FeedItem("2", "Beach House", "₦250,000 per night", ""),
+        FeedItem("2", "Beach House", "₦250,000 per night", ""),
+        FeedItem("2", "Beach House", "₦250,000 per night", ""),
+        FeedItem("2", "Beach House", "₦250,000 per night", ""),
+        FeedItem("2", "Beach House", "₦250,000 per night", ""),
+        FeedItem("2", "Beach House", "₦250,000 per night", ""),
+        FeedItem("2", "Beach House", "₦250,000 per night", ""),
+        FeedItem("2", "Beach House", "₦250,000 per night", ""),
+        FeedItem("2", "Beach House", "₦250,000 per night", ""),
+        FeedItem("2", "Beach House", "₦250,000 per night", ""),
+        FeedItem("2", "Beach House", "₦250,000 per night", ""),
+        FeedItem("2", "Beach House", "₦250,000 per night", ""),
+        FeedItem("2", "Beach House", "₦250,000 per night", ""),
+        FeedItem("2", "Beach House", "₦250,000 per night", ""),
+        FeedItem("2", "Beach House", "₦250,000 per night", ""),
+        FeedItem("2", "Beach House", "₦250,000 per night", ""),
+        FeedItem("2", "Beach House", "₦250,000 per night", ""),
+        FeedItem("2", "Beach House", "₦250,000 per night", ""),
+        FeedItem("2", "Beach House", "₦250,000 per night", ""),
+        FeedItem("3", "City Loft", "₦90,000 per night", "")
+    )
+
+    val following = listOf(
+        FeedItem("4", "John's Villa", "Following post", ""),
+        FeedItem("5", "Sarah's Studio", "Following post", "")
+    )
+
+    val live = listOf(
+        FeedItem("6", "Live Lagos Market", "Now streaming", ""),
+        FeedItem("7", "Live Travel Vlog", "Happening now", "")
+    )
+}
