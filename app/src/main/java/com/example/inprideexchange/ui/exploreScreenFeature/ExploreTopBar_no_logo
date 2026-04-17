@@ -25,9 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.constraintlayout.compose.ConstraintLayout
-import com.example.inprideexchange.ui.components.logo.M25Logo
 import kotlinx.coroutines.NonDisposableHandle.parent
 
 
@@ -45,25 +43,13 @@ fun ExploreTopBar(
             .padding(top = 10.dp, start = 20.dp, end = 16.dp)
     ) {
 
-        val (tabsRef, searchRef, logoRef) = createRefs()
-
-
-        M25Logo(
-            fontSize = 20.sp, // smaller for toolbar
-            modifier = Modifier.constrainAs(logoRef) {
-                start.linkTo(parent.start, margin = 9.dp)
-                top.linkTo(parent.top)
-                bottom.linkTo(parent.bottom, margin = 5.dp)
-            }
-        )
-
-
+        val (tabsRef, searchRef) = createRefs()
 
         // 🔥 Tabs Container
         Row(
             horizontalArrangement = Arrangement.spacedBy(16.dp),
             modifier = Modifier.constrainAs(tabsRef) {
-                end.linkTo(searchRef.start, margin = 16.dp)
+                start.linkTo(parent.start)
                 top.linkTo(parent.top)
                 bottom.linkTo(parent.bottom)
             }
@@ -98,7 +84,7 @@ fun ExploreTopBar(
                     if (isSelected) {
                         Box(
                             modifier = Modifier
-                                //  .fillMaxWidth(0.3f) // 🔥 dynamic width
+                              //  .fillMaxWidth(0.3f) // 🔥 dynamic width
                                 .width(45.dp) // 🔥 dynamic width
                                 .height(2.dp)
                                 .background(selectedColor)
@@ -116,7 +102,7 @@ fun ExploreTopBar(
             modifier = Modifier.constrainAs(searchRef) {
                 end.linkTo(parent.end)
                 top.linkTo(parent.top)
-                bottom.linkTo(parent.bottom, margin = 9.dp)
+                bottom.linkTo(parent.bottom, margin = 6.dp)
             }
         ) {
             Icon(

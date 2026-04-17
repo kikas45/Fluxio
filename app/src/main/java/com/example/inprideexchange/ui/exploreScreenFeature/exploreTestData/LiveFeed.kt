@@ -1,4 +1,4 @@
-package com.example.inprideexchange.ui.exploreScreenFeature
+package com.example.inprideexchange.ui.exploreScreenFeature.exploreTestData
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues

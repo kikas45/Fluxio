@@ -1,4 +1,4 @@
-package com.example.inprideexchange.ui.exploreScreenFeature
+package com.example.inprideexchange.ui.exploreScreenFeature.exploreTestData
 
 data class FeedItem(
     val id: String,

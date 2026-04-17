@@ -104,7 +104,7 @@ fun WelcomeScreen(
                             color = BrandText.heroSecondary(),
                             fontWeight = FontWeight.Medium
                         )
-                    ) { append("25") }
+                    ) { append("25+") }
                 },
                 style = typography.headlineSmall.copy(
                     fontSize = UtilityScreenSize.adaptiveFontSize(
