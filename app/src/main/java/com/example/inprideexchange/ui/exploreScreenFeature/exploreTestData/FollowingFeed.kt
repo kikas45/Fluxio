@@ -1,28 +1,40 @@
 package com.example.inprideexchange.ui.exploreScreenFeature.exploreTestData
 
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.pager.VerticalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.tooling.preview.Preview
+import coil.compose.AsyncImage
 
 @Composable
 fun FollowingFeed() {
 
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(
-            top = 65.dp,   // 🔥 push content below floating toolbar
-            bottom = 16.dp,
-            start = 16.dp,
-            end = 16.dp
-        )
-    ) {
+    val pagerSate = rememberPagerState(
+        pageCount = { FakeImageFeedData.following.size }
+    )
 
-        items(FakeFeedData.following) { item ->
-            FeedCard(item)
-        }
+
+    VerticalPager(
+        state = pagerSate,
+        modifier = Modifier.fillMaxSize(),
+
+        ) { page ->
+        val item = FakeImageFeedData.following[page]
+
+        AsyncImage(
+            model = item.imageUrl,
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize()
+        )
+
     }
+
+}
+
+@Preview(showBackground = true, showSystemUi = true)
+@Composable
+fun FollowingFeedPreview() {
+    FollowingFeed()
 }

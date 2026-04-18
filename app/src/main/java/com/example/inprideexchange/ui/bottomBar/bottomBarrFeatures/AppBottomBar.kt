@@ -1,4 +1,4 @@
-package com.example.inprideexchange.ui.BottomBar.bottomBarrFeatures
+package com.example.inprideexchange.ui.bottomBar.bottomBarrFeatures
 
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon

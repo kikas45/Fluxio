@@ -12,7 +12,7 @@ import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.runtime.Composable
 import com.example.inprideexchange.AppScreens.UserReg.SplashScreen
 import com.example.inprideexchange.AppScreens.UserReg.WelcomeScreen
-import com.example.inprideexchange.ui.BottomBar.bottomBarrFeatures.MainScreen
+import com.example.inprideexchange.ui.bottomBar.bottomBarrFeatures.MainScreen
 import com.example.inprideexchange.ui.sampleScreen.SampleScreen
 import com.example.inprideexchange.ui.registerScreen.RegisterUserEmail
 import com.example.inprideexchange.ui.themeScreen.ThemeRoute

@@ -1,4 +1,4 @@
-package com.example.inprideexchange.ui.BottomBar.bottomBarrFeatures
+package com.example.inprideexchange.ui.bottomBar.bottomBarrFeatures
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme

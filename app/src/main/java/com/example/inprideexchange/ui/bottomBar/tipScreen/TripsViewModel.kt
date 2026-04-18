@@ -1,4 +1,4 @@
-package com.example.inprideexchange.ui.BottomBar.tipScreen
+package com.example.inprideexchange.ui.bottomBar.tipScreen
 
 
 import androidx.lifecycle.ViewModel

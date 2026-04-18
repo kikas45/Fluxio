@@ -7,11 +7,11 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.example.inprideexchange.Utils.Constants
-import com.example.inprideexchange.ui.BottomBar.bottomBarrFeatures.BottomNavItem
+import com.example.inprideexchange.ui.bottomBar.bottomBarrFeatures.BottomNavItem
 import com.example.inprideexchange.ui.exploreScreenFeature.ExploreScreen
-import com.example.inprideexchange.ui.BottomBar.tipScreen.TripsScreen
-import com.example.inprideexchange.ui.BottomBar.tipScreen.TripsViewModel
-import com.example.inprideexchange.ui.BottomBar.wishScreen.WishlistScreen
+import com.example.inprideexchange.ui.bottomBar.tipScreen.TripsScreen
+import com.example.inprideexchange.ui.bottomBar.tipScreen.TripsViewModel
+import com.example.inprideexchange.ui.bottomBar.wishScreen.WishlistScreen
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 
