@@ -42,7 +42,7 @@ fun ExploreTopBar(
         modifier = Modifier
             .fillMaxWidth()
             .background(Color.Transparent)
-            .padding(top = 10.dp, start = 20.dp, end = 16.dp)
+            .padding(top = 40.dp, start = 20.dp, end = 16.dp)
     ) {
 
         val (tabsRef, searchRef, logoRef) = createRefs()

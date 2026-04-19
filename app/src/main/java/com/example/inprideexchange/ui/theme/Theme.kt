@@ -50,7 +50,7 @@ fun InPrideExchangeTheme(
             colorScheme = colors,
             typography = AppTypography
         ) {
-            SetSystemBarsColor()
+            // SetSystemBarsColor() // serve as issue for full screen //  culpirt 1
             content()
         }
     }

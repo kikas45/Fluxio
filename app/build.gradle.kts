@@ -146,5 +146,9 @@ dependencies {
     // special case for material 3
     implementation("com.google.android.material:material:1.12.0")
 
+    val media3_version = "1.3.1"
+    implementation("androidx.media3:media3-exoplayer:$media3_version")
+    implementation("androidx.media3:media3-ui:$media3_version")
+
 
 }

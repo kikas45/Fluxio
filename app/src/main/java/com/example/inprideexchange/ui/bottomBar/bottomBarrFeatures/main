@@ -1,6 +1,7 @@
 package com.example.inprideexchange.ui.bottomBar.bottomBarrFeatures
-import android.annotation.SuppressLint
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.*
@@ -11,8 +12,6 @@ import androidx.compose.runtime.getValue
 import androidx.navigation.NavHostController
 import com.example.inprideexchange.ui.navigation.BottomBarNavigation
 
-
-@SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
 fun MainScreen(topNavController: NavHostController) {
 
@@ -25,13 +24,18 @@ fun MainScreen(topNavController: NavHostController) {
         BottomNavItem.ScreenC.route
     )
 
-    val showBottomBar = navBackStackEntry?.destination?.route in bottomBarScreens
+    val showBottomBar =
+        navBackStackEntry?.destination?.route in bottomBarScreens
 
     Surface(
         modifier = Modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background
     ) {
+
         Scaffold(
+            // 🔥 CRITICAL: disable default insets
+           // contentWindowInsets = WindowInsets(0),
+
             bottomBar = {
                 if (showBottomBar) {
                     AppBottomBar(
@@ -48,9 +52,11 @@ fun MainScreen(topNavController: NavHostController) {
                     )
                 }
             }
-        ) {
+
+        ) { padding ->
             BottomBarNavigation(
                 navController = bottomNavController,
+                modifier = Modifier.padding(padding),
                 topNavController = topNavController
             )
         }

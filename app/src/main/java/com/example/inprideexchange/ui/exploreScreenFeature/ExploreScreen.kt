@@ -8,7 +8,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.inprideexchange.ui.exploreScreenFeature.exploreTestData.FollowingFeed
-import com.example.inprideexchange.ui.exploreScreenFeature.exploreTestData.ForYouFeed
+import com.example.inprideexchange.ui.exploreScreenFeature.exploreTestData.exoplayer.ForYouFeed
 
 @Composable
 fun ExploreScreen(
