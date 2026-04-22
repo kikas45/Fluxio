@@ -12,18 +12,10 @@ object FakeVideoRepository {
     )
 
     fun getInitialFeed(): List<FeedVideoItem> =
-        videos.mapIndexed { index, url ->
-            FeedVideoItem(index, url)
+        videos.mapIndexed { index, url -> FeedVideoItem(index, url) }
+
+    fun loadMore(startIndex: Int, count: Int = 5): List<FeedVideoItem> =
+        (startIndex until startIndex + count).map {
+            FeedVideoItem(id = it, videoUrl = videos[it % videos.size])
         }
-
-    // ✅ Stop loading when list ends
-    fun loadMore(startIndex: Int, count: Int = 5): List<FeedVideoItem> {
-        if (startIndex >= videos.size) return emptyList()
-
-        val endIndex = (startIndex + count).coerceAtMost(videos.size)
-
-        return (startIndex until endIndex).map {
-            FeedVideoItem(id = it, videoUrl = videos[it])
-        }
-    }
 }

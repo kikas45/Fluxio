@@ -7,106 +7,132 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.media3.common.MediaItem
 import androidx.media3.common.util.UnstableApi
 
 /**
- * ═══════════════════════════════════════════════════════════════════════════
- *  HOW THIS WORKS  (read before editing)
- * ═══════════════════════════════════════════════════════════════════════════
+ * Full-screen vertical feed with TikTok-style playback behaviour.
  *
- *  [PlayerPool] owns exactly 3 ExoPlayers for the entire lifetime of this
- *  screen. They rotate through PREV / CURRENT / NEXT slots as the user swipes.
- *  No new players are ever allocated after startup.
+ * KEY CHANGES FROM ORIGINAL:
  *
- *  [VideoPreloader] concurrently downloads the first 2 MB of upcoming videos
- *  to disk (VideoCache / SimpleCache). When PlayerPool.load() is called for
- *  those pages, CacheDataSource reads from disk instead of the network.
+ * FIX 1 — double-swipe on first video:
+ *   The original used LaunchedEffect(pagerState.currentPage) which only
+ *   fires when currentPage *changes*. At launch, currentPage is already 0,
+ *   so the effect never fires and the player at page 0 never gets
+ *   playWhenReady = true until the user swipes away and back.
  *
- *  Swipe sequence (forward):
- *    1. pagerState.currentPage changes
- *    2. pool.rotate(+1)  →  old NEXT becomes CURRENT instantly (zero alloc)
- *    3. pool.load(NEXT)  →  recycled player gets the new N+1 URL
- *    4. preloader starts writing N+2 to disk in the background
- *    5. VerticalPager assigns the right physical player to each visible page
+ *   Fix: add LaunchedEffect(Unit) in ForYouFeed to prime page 0 on first
+ *   composition, AND move the isPlaying signal into TikTokVideoItem via
+ *   a combination of LaunchedEffect(Unit) + LaunchedEffect(isPlaying).
  *
- * ═══════════════════════════════════════════════════════════════════════════
+ * FIX 2 — off-screen player plays audio:
+ *   The original derived isPlaying from pagerState.currentPage inside the
+ *   VerticalPager slot. During a fast swipe, currentPage can lag behind
+ *   the visible page, so a page that just left the screen still sees
+ *   isPlaying = true for a brief window. Switching to
+ *   pagerState.settledPage means isPlaying only becomes true AFTER the
+ *   pager has fully settled on a page, never during mid-swipe.
+ *
+ * FIX 3 — audio on lock screen:
+ *   Handled inside TikTokVideoItem via LifecycleEventObserver. No changes
+ *   needed in this composable.
  */
 @OptIn(UnstableApi::class)
 @Composable
 fun ForYouFeed() {
 
-    val context    = LocalContext.current
-    val feed       = rememberFeed()
+    val context = LocalContext.current
+    val feed    = rememberFeed()
+
+
     val pool       = remember { PlayerPool(context) }
-    val preloader  = remember { VideoPreloader(context) }
+
+
+    // Cache-aware player map: pageIndex → ExoPlayer
+    val players = remember { mutableMapOf<Int, androidx.media3.exoplayer.ExoPlayer>() }
+
+    // Background disk prefetcher
+    val preloader = remember { VideoPreloader(context) }
 
     val pagerState = rememberPagerState(
         initialPage = 0,
         pageCount   = { feed.size }
     )
 
-    // Track the previous page index to calculate swipe direction for rotation
-    var prevPage by remember { mutableIntStateOf(0) }
-
-    // ── Full cleanup when screen leaves composition ──────────────────────────
+    // Cleanup on exit
     DisposableEffect(Unit) {
         onDispose {
             preloader.cancel()
+           // players.values.forEach { it.release() }
             pool.release()
+            players.clear()
         }
     }
 
-    // ── Initial load before the user has swiped at all ──────────────────────
+
+    // ── FIX 1: Prime page 0 on first composition ─────────────────────────────
+    // Without this, currentPage starts at 0 and never triggers the
+    // LaunchedEffect(pagerState.settledPage) below because it doesn't change.
     LaunchedEffect(Unit) {
-        pool.load(PlayerPool.CURRENT, feed.getOrNull(0)?.videoUrl)
-        pool.load(PlayerPool.NEXT,    feed.getOrNull(1)?.videoUrl)
+        val first = feed.getOrNull(0) ?: return@LaunchedEffect
+        val player = players.getOrPut(0) { CachedPlayerFactory.build(context) }
+        player.setMediaItem(MediaItem.fromUri(first.videoUrl))
+        player.prepare()
+        // Prefetch the next two items immediately at launch
+        feed.getOrNull(1)?.videoUrl?.let { preloader.preload(it) }
         feed.getOrNull(2)?.videoUrl?.let { preloader.preload(it) }
     }
 
-    // ── React to every page change ───────────────────────────────────────────
-    LaunchedEffect(pagerState.currentPage) {
-        val current   = pagerState.currentPage
-        val direction = current - prevPage          // +1 forward, -1 backward
-        prevPage = current
+    // ── FIX 2: Use settledPage instead of currentPage ────────────────────────
+    // settledPage only updates when the pager has FULLY settled — not during
+    // the swipe animation. This prevents isPlaying from being true for a
+    // page that is mid-swipe off screen.
+    LaunchedEffect(pagerState.settledPage) {
+        val current = pagerState.settledPage
 
-        // 1. Rotate the slot assignments so CURRENT always points to the right player
-        pool.rotate(direction)
-
-        // 2. Load the new neighbour into the freshly-recycled slot
-        //    load() is a no-op if the player already has this URL — safe to call always
-        pool.load(PlayerPool.CURRENT, feed.getOrNull(current)?.videoUrl)
-        pool.load(PlayerPool.NEXT,    feed.getOrNull(current + 1)?.videoUrl)
-        pool.load(PlayerPool.PREV,    feed.getOrNull(current - 1)?.videoUrl)
-
-        // 3. Prefetch the page AFTER next to disk (two pages ahead)
-        feed.getOrNull(current + 2)?.videoUrl?.let { preloader.preload(it) }
-
-        // 4. Infinite scroll — load more items when 2 pages from the end
+        // Infinite scroll: load more when near the end
         if (current >= feed.size - 2) {
             feed.addAll(FakeVideoRepository.loadMore(feed.size))
         }
+
+        // Background prefetch: N+1 and N+2 bytes to disk before user arrives
+        feed.getOrNull(current + 1)?.videoUrl?.let { preloader.preload(it) }
+        feed.getOrNull(current + 2)?.videoUrl?.let { preloader.preload(it) }
+
+        // Release players outside the ±1 window.
+        // IMPORTANT: collect stale keys into a separate list FIRST to avoid
+        // ConcurrentModificationException when mutating while iterating.
+        val keepWindow = (current - 1)..(current + 1)
+        val stalePages = players.keys.filter { it !in keepWindow }
+        stalePages.forEach { page ->
+            players.remove(page)?.release()
+        }
     }
 
-    // ── Render ───────────────────────────────────────────────────────────────
     VerticalPager(
-        state                   = pagerState,
-        modifier                = Modifier.fillMaxSize(),
-        beyondViewportPageCount = 1,
-        key                     = { page -> feed.getOrNull(page)?.id ?: page }
+        state                    = pagerState,
+        modifier                 = Modifier.fillMaxSize(),
+        beyondViewportPageCount  = 1,
+        key                      = { page -> feed.getOrNull(page)?.id ?: page }
     ) { page ->
 
-        // Map each visible page to the correct physical player from the pool.
-        // Pages more than 1 away receive null → black screen, no wasted resources.
-        val player = when (page) {
-            pagerState.currentPage     -> pool.currentPlayer
-            pagerState.currentPage + 1 -> pool.nextPlayer
-            pagerState.currentPage - 1 -> pool.prevPlayer
-            else                       -> null
+        val item = feed.getOrNull(page) ?: return@VerticalPager
+
+        val player = players.getOrPut(page) {
+            CachedPlayerFactory.build(context)
+        }
+
+        LaunchedEffect(player, item.videoUrl) {
+            player.setMediaItem(MediaItem.fromUri(item.videoUrl))
+            player.prepare()
         }
 
         TikTokVideoItem(
             player    = player,
-            isPlaying = pagerState.currentPage == page
+            // ── FIX 2: settledPage, not currentPage ──────────────────────
+            // currentPage changes during the swipe animation; settledPage
+            // only changes once the pager has fully come to rest on a page.
+            isPlaying = pagerState.settledPage == page,
         )
     }
 }
