@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+
+    <style name="Theme.ComposeUIChallenge" parent="Theme.Material3.DayNight.NoActionBar">
+
+        <!-- Splash background -->
+        <item name="android:windowSplashScreenBackground" tools:ignore="NewApi">@color/transparent</item>
+
+        <!-- Splash logo -->
+        <item name="android:windowSplashScreenAnimatedIcon" tools:ignore="NewApi">@drawable/ic_splash_logo</item>
+
+        <!-- Remove Android circle background -->
+        <item name="android:windowSplashScreenIconBackgroundColor" tools:ignore="NewApi">@android:color/transparent</item>
+
+    </style>
+
+</resources>
+
+
+
+
+<!--
+
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <style name="Theme.ComposeUIChallenge" parent="android:Theme.Material.Light.NoActionBar" />
+</resources>-->

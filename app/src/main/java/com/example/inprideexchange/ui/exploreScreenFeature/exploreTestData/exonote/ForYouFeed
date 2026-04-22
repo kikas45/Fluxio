@@ -1,0 +1,95 @@
+package com.example.inprideexchange.ui.exploreScreenFeature.exploreTestData.exoplayer
+
+import androidx.annotation.OptIn
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.pager.VerticalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.media3.common.MediaItem
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.exoplayer.ExoPlayer
+
+@OptIn(UnstableApi::class)
+@Composable
+fun ForYouFeed() {
+
+    val context = LocalContext.current
+    val feed = rememberFeed()
+
+    val pool = remember { PlayerPool(context) }
+    val preloader = remember { VideoPreloader(context) }
+
+    val pagerState = rememberPagerState(
+        initialPage = 0,
+        pageCount = { feed.size }
+    )
+
+    DisposableEffect(Unit) {
+        onDispose {
+            preloader.cancel()
+            pool.release()
+        }
+    }
+
+    LaunchedEffect(pagerState.settledPage) {
+
+        val current = pagerState.settledPage
+
+        // 🔥 Pagination
+        if (current >= feed.size - 2) {
+            feed.addAll(FakeVideoRepository.loadMore(feed.size))
+        }
+
+        val currentItem = feed.getOrNull(current)
+        val nextItem = feed.getOrNull(current + 1)
+        val next2Item = feed.getOrNull(current + 2)
+
+        fun warm(player: ExoPlayer, item: FeedVideoItem?) {
+            val url = item?.videoUrl ?: return
+
+            // 🔥 avoid reloading same video
+            if (player.currentMediaItem?.mediaId == url) return
+
+            player.setMediaItem(
+                MediaItem.Builder()
+                    .setUri(url)
+                    .setMediaId(url)
+                    .build()
+            )
+            player.prepare()
+            player.playWhenReady = false
+        }
+
+        // 🎯 Warm players
+        warm(pool.current, currentItem)
+        warm(pool.next, nextItem)
+        warm(pool.next2, next2Item)
+
+        // 🔥 Disk preload (background)
+        nextItem?.videoUrl?.let { preloader.preload(it) }
+        next2Item?.videoUrl?.let { preloader.preload(it) }
+    }
+
+    VerticalPager(
+        state = pagerState,
+        modifier = Modifier.fillMaxSize(),
+        beyondViewportPageCount = 1
+    ) { page ->
+
+        val current = pagerState.settledPage
+
+        val player = when (page) {
+            current -> pool.current
+            current + 1 -> pool.next
+            current + 2 -> pool.next2
+            else -> null
+        }
+
+        TikTokVideoItem(
+            player = player,
+            isPlaying = page == current
+        )
+    }
+}

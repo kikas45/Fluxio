@@ -1,0 +1,36 @@
+package com.example.inprideexchange.ui.exploreScreenFeature.exploreTestData.exoplayer
+
+import android.content.Context
+import androidx.annotation.OptIn
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.datasource.DefaultHttpDataSource
+import androidx.media3.datasource.cache.CacheDataSource
+
+/**
+ * Builds a [CacheDataSource.Factory] that:
+ *  1. Reads from [VideoCache] (disk) if bytes are already cached.
+ *  2. Falls back to [DefaultHttpDataSource] (network) for uncached segments.
+ *  3. Writes every downloaded segment back to disk for future plays.
+ *
+ * This factory MUST be passed to every ExoPlayer via
+ * ExoPlayer.Builder.setMediaSourceFactory(DefaultMediaSourceFactory(create(context)))
+ * — if you skip this, players will always hit the network, making the cache useless.
+ */
+@OptIn(UnstableApi::class)
+object CacheFactory {
+
+    fun create(context: Context): CacheDataSource.Factory {
+
+        val httpFactory = DefaultHttpDataSource.Factory()
+            .setAllowCrossProtocolRedirects(true)
+            .setConnectTimeoutMs(15_000)
+            .setReadTimeoutMs(15_000)
+
+        return CacheDataSource.Factory()
+            .setCache(VideoCache.getInstance(context))
+            .setUpstreamDataSourceFactory(httpFactory)
+
+            // 🔥 IMPORTANT: remove ignore flag (fix stuck videos)
+            .setFlags(0)
+    }
+}

@@ -1,0 +1,59 @@
+package com.example.inprideexchange.ui.exploreScreenFeature.exploreTestData.exoplayer
+
+import android.content.Context
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.datasource.cache.CacheWriter
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
+
+/**
+ * Silently downloads the first [bytesToCache] bytes of upcoming videos
+ * into [VideoCache] BEFORE the user swipes to them.
+ *
+ * This is how TikTok feels "instant" — videos are partially or fully cached
+ * on disk by the time the user arrives at that page.
+ *
+ * Usage:
+ *   val preloader = VideoPreloader(context)
+ *   preloader.preload("https://...")   // call for page N+1 and N+2
+ *   preloader.cancel()                 // call in onDispose
+ */
+@UnstableApi
+class VideoPreloader(private val context: Context) {
+
+    // Cache the first 2 MB of each video — enough for instant start
+    private val bytesToCache = 2L * 1024 * 1024
+
+    private val scope = CoroutineScope(Dispatchers.IO)
+    private val jobs  = mutableMapOf<String, Job>()
+
+    fun preload(url: String) {
+        if (jobs.containsKey(url)) return   // already in progress or done
+
+        jobs[url] = scope.launch {
+            runCatching {
+                val dataSourceFactory = CacheFactory.create(context.applicationContext)
+                val dataSpec = androidx.media3.datasource.DataSpec(
+                    android.net.Uri.parse(url),
+                    /* position= */ 0L,
+                    bytesToCache
+                )
+                val cacheWriter = CacheWriter(
+                    dataSourceFactory.createDataSource(),
+                    dataSpec,
+                    /* temporaryBuffer= */ null,
+                    /* progressListener= */ null
+                )
+                cacheWriter.cache()
+            }
+            // Swallow errors — preload is best-effort; playback handles real errors
+        }
+    }
+
+    fun cancel() {
+        jobs.values.forEach { it.cancel() }
+        jobs.clear()
+    }
+}

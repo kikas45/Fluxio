@@ -1,0 +1,57 @@
+package com.example.inprideexchange.ui.exploreScreenFeature.exploreTestData.exoplayer
+
+import android.content.Context
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.database.StandaloneDatabaseProvider
+import androidx.media3.datasource.cache.LeastRecentlyUsedCacheEvictor
+import androidx.media3.datasource.cache.SimpleCache
+import java.io.File
+/**
+ * Singleton disk-backed video cache (200 MB, LRU eviction).
+ *
+ * WHY THIS MATTERS FOR TIKTOK-LIKE BEHAVIOUR:
+ *  ExoPlayer's SimpleCache writes downloaded video segments to disk in chunks.
+ *  On re-play or re-visit, CacheDataSource serves bytes from disk first —
+ *  falling back to the network only for uncached segments.
+ *  This means a previously-played video loads instantly with zero network.
+ *
+ * THREAD SAFETY:
+ *  SimpleCache must be instantiated at most ONCE per cache directory per process.
+ *  Double-checked locking + @Volatile guarantees this even under concurrent first calls.
+ *
+ * LIFECYCLE:
+ *  - Call getInstance() from Application.onCreate() to warm the cache early.
+ *  - Call release() ONLY on app termination or a deliberate "clear cache" action.
+ *    Never call it during configuration changes — it will crash active players.
+ */
+@UnstableApi
+object VideoCache {
+
+    private const val CACHE_DIR_NAME  = "video_cache"
+    private const val CACHE_MAX_BYTES = 200L * 1024 * 1024   // 200 MB
+
+    @Volatile
+    private var cache: SimpleCache? = null
+
+    fun getInstance(context: Context): SimpleCache =
+        cache ?: synchronized(this) {
+            cache ?: buildCache(context.applicationContext).also { cache = it }
+        }
+
+    /** Safe to call multiple times — no-op if already released. */
+    fun release() {
+        synchronized(this) {
+            cache?.release()
+            cache = null
+        }
+    }
+
+    private fun buildCache(appContext: Context): SimpleCache {
+        val dir = File(appContext.cacheDir, CACHE_DIR_NAME)
+        return SimpleCache(
+            dir,
+            LeastRecentlyUsedCacheEvictor(CACHE_MAX_BYTES),
+            StandaloneDatabaseProvider(appContext)
+        )
+    }
+}

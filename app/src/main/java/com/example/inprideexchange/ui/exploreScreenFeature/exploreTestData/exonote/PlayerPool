@@ -1,0 +1,23 @@
+package com.example.inprideexchange.ui.exploreScreenFeature.exploreTestData.exoplayer
+
+import android.content.Context
+import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+
+@UnstableApi
+class PlayerPool(context: Context) {
+
+    private val appContext = context.applicationContext
+
+    val current = CachedPlayerFactory.build(appContext)
+    val next = CachedPlayerFactory.build(appContext)
+    val next2 = CachedPlayerFactory.build(appContext)
+
+    fun release() {
+        current.release()
+        next.release()
+        next2.release()
+    }
+}
