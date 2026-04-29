@@ -2,9 +2,6 @@ package com.example.inprideexchange.ui.exploreScreenFeature.exoplayer
 
 object FakeVideoRepository {
 
-
-
-
     private val videos = listOf(
        // "https://livesim.dashif.org/livesim/testpic_2s/Manifest.mpd",
         "https://dash.akamaized.net/envivio/EnvivioDash3/manifest.mpd",

@@ -21,15 +21,53 @@ import androidx.media3.common.util.UnstableApi
 import kotlinx.coroutines.delay
 
 /**
- * ForYouFeed — TikTok-style vertical video feed, 2-player pool edition.
+ * ForYouFeed — TikTok-style vertical video feed, 3-player pool edition.
  *
- * ── FIX: Boot block uses playCurrentPlayerFromStart() ────────────────────────
+ * ── SLOT MAP ─────────────────────────────────────────────────────────────────
  *
- * playCurrentPlayer() no longer unconditionally seekTo(0) on CURRENT. On boot
- * we explicitly want to start from 0, so the boot LaunchedEffect now calls
- * playCurrentPlayerFromStart() instead. All subsequent calls (after swipes)
- * use playCurrentPlayer(), which preserves the playhead position — critical
- * for network-recovery correctness.
+ * Three pages are always mapped at any time:
+ *   slotForPage[s - 1] = PREV     (if s > 0)
+ *   slotForPage[s]     = CURRENT
+ *   slotForPage[s + 1] = NEXT
+ *
+ * ── RACE FIX: atomic slotForPage updates ────────────────────────────────────
+ *
+ * Previously slotForPage.clear() followed by three individual puts. Between
+ * clear() and the first put, Compose could read an empty map and return early
+ * from the pager lambda — producing a 1-frame black flash on fast swipes.
+ *
+ * Fix: build the complete new map first, then write all three keys in a single
+ * targeted-put pass — never calling clear(). Keys for pages that no longer
+ * exist are removed explicitly. The map is never empty between operations:
+ *   1. Put new values for s-1, s, s+1 (overwriting stale values).
+ *   2. Remove only the key that is now two pages away.
+ *
+ * This means slotForPage always contains at least the CURRENT mapping during
+ * any recomposition that happens between steps 1 and 2.
+ *
+ * ── LIFECYCLE FIX: removed player.pause() from onDispose ────────────────────
+ *
+ * The LifecycleEventObserver's onDispose called player.pause() on whatever
+ * player was bound at dispose time. By then rotate() may have already
+ * reassigned that physical player to the CURRENT slot and started playing.
+ * The onDispose pause() was silently stopping the currently playing video
+ * every time a page left composition.
+ *
+ * Fix: onDispose no longer calls player.pause(). Playback state is fully
+ * managed by ForYouFeed's orchestration (playCurrentPlayer / rotate) and
+ * by the ON_PAUSE lifecycle event, which is the correct signal for pausing.
+ *
+ * ── LOAD STRATEGY ────────────────────────────────────────────────────────────
+ *
+ * Forward (+1):
+ *   PREV  came from old CURRENT — already loaded, frame preserved.
+ *   CURRENT came from old NEXT  — already loaded.
+ *   NEXT  is the recycled slot  — load new URL.
+ *
+ * Backward (-1):
+ *   NEXT  came from old CURRENT — already loaded, frame preserved.
+ *   CURRENT came from old PREV  — already loaded, frame preserved.
+ *   PREV  is the recycled slot  — load new URL.
  */
 @OptIn(UnstableApi::class, ExperimentalFoundationApi::class)
 @Composable
@@ -47,7 +85,9 @@ fun ForYouFeed() {
 
     val pageHeight = LocalConfiguration.current.screenHeightDp.dp
 
-    // pageIndex → PlayerPool slot constant (CURRENT / NEXT)
+    // pageIndex → PlayerPool logical slot (PREV / CURRENT / NEXT).
+    // Never cleared — only targeted puts and removes to avoid the
+    // empty-map race window that caused 1-frame black flashes.
     val slotForPage = remember { mutableStateMapOf<Int, Int>() }
 
     var lastSettled     by remember { mutableIntStateOf(0) }
@@ -63,16 +103,13 @@ fun ForYouFeed() {
 
     // ── Boot ──────────────────────────────────────────────────────────────────
     LaunchedEffect(Unit) {
+        // Page 0 = CURRENT, page 1 = NEXT. No PREV on boot.
         slotForPage[0] = PlayerPool.CURRENT
         slotForPage[1] = PlayerPool.NEXT
 
         pool.load(PlayerPool.CURRENT, feed.getOrNull(0)?.videoUrl)
         pool.load(PlayerPool.NEXT,    feed.getOrNull(1)?.videoUrl)
 
-        // FIX: use playCurrentPlayerFromStart() on boot — we explicitly want
-        // index 0 to start from the beginning. playCurrentPlayer() would also
-        // seek to 0 here since the player is in STATE_IDLE, but being explicit
-        // is safer and documents intent clearly.
         pool.playCurrentPlayerFromStart()
 
         val nextPoolUrl = feed.getOrNull(1)?.videoUrl
@@ -96,26 +133,27 @@ fun ForYouFeed() {
         if (direction != 0) {
             pool.rotate(direction)
 
-            slotForPage.clear()
+            // ── Atomic slot map update — never clear(), only targeted writes ──
+            //
+            // Write all three live keys first (overwrite any stale values).
+            // Then remove the single key that is now two pages away.
+            // At no point is the map empty or missing the CURRENT key.
+            if (s > 0) slotForPage[s - 1] = PlayerPool.PREV
             slotForPage[s]     = PlayerPool.CURRENT
             slotForPage[s + 1] = PlayerPool.NEXT
 
+            // Remove stale keys: the page that just fell off the window.
             when {
-                direction > 0 -> {
-                    pool.load(PlayerPool.NEXT, feed.getOrNull(s + 1)?.videoUrl)
-                }
-                direction < 0 -> {
-                    pool.load(PlayerPool.CURRENT, feed.getOrNull(s)?.videoUrl)
-                    pool.load(PlayerPool.NEXT,    feed.getOrNull(s + 1)?.videoUrl)
-                }
+                direction > 0 -> slotForPage.remove(s - 2)   // was old PREV
+                direction < 0 -> slotForPage.remove(s + 2)   // was old NEXT
+            }
+
+            when {
+                direction > 0 -> pool.load(PlayerPool.NEXT, feed.getOrNull(s + 1)?.videoUrl)
+                direction < 0 -> pool.load(PlayerPool.PREV, feed.getOrNull(s - 1)?.videoUrl)
             }
         }
 
-        // After a swipe, the new CURRENT is always a freshly loaded video
-        // (rotate() + load() set it up from scratch), so playCurrentPlayer()
-        // will correctly start it from 0. If direction == 0 (recompose on
-        // same page), playCurrentPlayer() preserves the playhead — which is
-        // the fix for network-drop recovery.
         pool.playCurrentPlayer()
 
         // ── Feed windowing ────────────────────────────────────────────────────
@@ -147,6 +185,10 @@ fun ForYouFeed() {
     }
 
     // ── Poll: NEXT player readiness for spinner ───────────────────────────────
+    //
+    // Reads pool.isNextReady() every 100 ms. The soft race where rotate()
+    // changes slot[NEXT] between the poll read and the slot reassignment is
+    // harmless — the worst outcome is a 100 ms spinner flicker.
     LaunchedEffect(Unit) {
         while (true) {
             val ready = pool.isNextReady()
@@ -178,6 +220,7 @@ fun ForYouFeed() {
 
             val slotIndex = slotForPage[page] ?: return@VerticalPager
             val player = when (slotIndex) {
+                PlayerPool.PREV    -> pool.prevPlayer
                 PlayerPool.CURRENT -> pool.currentPlayer
                 PlayerPool.NEXT    -> pool.nextPlayer
                 else               -> return@VerticalPager
@@ -192,7 +235,8 @@ fun ForYouFeed() {
             )
         }
 
-        // Loading spinner — shown while swiping and NEXT player is not ready
+        // Spinner: shown while swiping forward and NEXT player isn't ready yet.
+        // Not needed on backward swipe — PREV always has a live frame.
         if (isScrolling && !nextPlayerReady) {
             CircularProgressIndicator(
                 modifier    = Modifier
