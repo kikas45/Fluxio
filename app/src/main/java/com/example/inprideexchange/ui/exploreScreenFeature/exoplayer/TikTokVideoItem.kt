@@ -253,8 +253,11 @@ fun TikTokVideoItem(
                     player.play()
                     errorWhilePlaying   = false
                     isBufferingMidVideo = false
-                    hasStartedPlaying   = false
-                    firstFrameRendered  = false
+                    // Do NOT reset hasStartedPlaying or firstFrameRendered here.
+                    // This is a mid-video reconnect — the cover must stay hidden
+                    // and only the buffering spinner should show. Resetting
+                    // firstFrameRendered would make coverVisible = true, showing
+                    // the dark overlay on top of a video that was already playing.
                     lastPosition        = -1L
                     positionStuckSince  = 0L
                 }
