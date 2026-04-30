@@ -1,5 +1,6 @@
 package com.example.inprideexchange.ui.exploreScreenFeature.exoplayer
 
+import android.annotation.SuppressLint
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkRequest
@@ -106,6 +107,7 @@ private const val PRE_START_RETRY_POLL_MS = 500L
  * flips false — the same moment ForYouFeed's rotate() demotes this slot. The
  * next assignment starts fresh with an opaque cover waiting for a new first frame.
  */
+@SuppressLint("NewApi")
 @OptIn(UnstableApi::class)
 @Composable
 fun TikTokVideoItem(
