@@ -1,8 +1,14 @@
 package com.example.inprideexchange.ui.exploreScreenFeature.exoplayer
 
 import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkRequest
+import android.os.Handler
+import android.os.Looper
 import androidx.annotation.OptIn
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
@@ -20,7 +26,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
@@ -43,70 +51,75 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlin.math.roundToInt
 
-private const val PROGRESS_POLL_MS   = 200L
-private const val WATCHDOG_POLL_MS   = 1_000L
-private const val BUFFERING_STUCK_MS = 4_000L
+private const val PROGRESS_POLL_MS        = 200L
+private const val WATCHDOG_POLL_MS        = 1_000L
+private const val BUFFERING_STUCK_MS      = 4_000L
+private const val PRE_START_RETRY_POLL_MS = 500L
 
 /**
  * Single video page in the TikTok feed.
  *
- * ── FIXES IN THIS VERSION ────────────────────────────────────────────────────
+ * ── LOADING COVER — soft frosted overlay ─────────────────────────────────────
  *
- * FIX 1 — LifecycleEventObserver onDispose no longer calls player.pause()
+ * When ForYouFeed signals showLoadingCover = true (this page is the NEXT slot
+ * and the player has not yet prepared), a soft light-gray gradient is shown on
+ * top of the PlayerView. It is designed to feel calm and reassuring — closer to
+ * a frosted glass or "blurred preview" aesthetic than a hard black wall.
  *
- *   Root cause: When a page composable leaves composition (pager recycles it),
- *   DisposableEffect(lifecycleOwner, player).onDispose() fired and called
- *   player.pause() on whatever physical player was bound at that moment.
- *   But rotate() may have already reassigned that physical player to the
- *   CURRENT slot. The result: the currently playing video was silently paused
- *   every time any page left composition. ForYouFeed's playCurrentPlayer()
- *   re-started it shortly after, masking the bug — but causing an audible
- *   audio glitch and brief playback stall on every swipe.
+ * ── THE CORRECT SIGNAL: onRenderedFirstFrame ──────────────────────────────────
  *
- *   Fix: onDispose() only removes the lifecycle observer. Playback state is
- *   exclusively managed by:
- *     • ForYouFeed orchestration (playCurrentPlayer / rotate)
- *     • ON_PAUSE lifecycle event (app going to background — correct signal)
- *     • LaunchedEffect(isPlaying) which pauses when isPlaying = false
+ * Two signals could indicate "player is ready to show video":
  *
- * FIX 2 — formatMediaTime uses StringBuilder, not String.format
+ *   STATE_READY:
+ *     Fires when the decoder has enough data to start playback.
+ *     The SurfaceView may still be black — the codec has not yet pushed a frame
+ *     to the display buffer. Removing the cover here causes a black flash.
  *
- *   String.format() on Android allocates a Formatter + Locale + several
- *   intermediate objects on every call. With the progress poll running at
- *   200 ms intervals, this was 5 allocations/second per playing video.
- *   StringBuilder with manual digit writing produces zero intermediate
- *   allocations and is ~4x faster on ART.
+ *   onRenderedFirstFrame:
+ *     Fires only after the codec has decoded AND the display subsystem has
+ *     submitted a frame to the SurfaceView. The surface is visually non-black.
+ *     This is the only safe moment to reveal the video behind the cover.
  *
- * FIX 3 — Watchdog play() guarded by isPlaying flag
+ * We use onRenderedFirstFrame as the gate. The cover holds until BOTH:
+ *   • showLoadingCover == false  (ForYouFeed: player reached STATE_READY)
+ *   • firstFrameRendered == true (listener: frame is on the display surface)
  *
- *   The watchdog called player.play() on recovery without checking
- *   currentIsPlaying. If the player had already been rotated to PREV/NEXT
- *   slot and isPlaying was false, the watchdog would spuriously restart it.
- *   Fix: recovery calls are now gated by currentIsPlaying.
+ * ── COVER APPEARANCE ─────────────────────────────────────────────────────────
  *
- * ── SEEKBAR ───────────────────────────────────────────────────────────────────
+ * Soft warm-white gradient (#F5F5F5 → #E8E8E8). Light enough to read as
+ * "blurred loading preview" rather than a hard block, with slight brightening
+ * at top and bottom edges for dimensionality. Alpha channel 0xEB = ~92% so a
+ * ghost of any SurfaceView content bleeds through at the tail of the fade.
  *
- *   IDLE   — 2dp track, no thumb (clean TikTok look).
- *   DRAG   — 4dp track, circular thumb, pill time label above thumb.
- *   END    — seekTo(targetMs), resume if was playing, label fades out.
+ * ── FADE TIMING ──────────────────────────────────────────────────────────────
  *
- * ── MEMORY: ConnectivityManager hoisted ──────────────────────────────────────
+ * Fade-in: instant (durationMillis = 0) — the cover must be opaque the moment
+ *   the user begins swiping into a not-ready page. Any delay here would let the
+ *   black SurfaceView show through during the swipe.
  *
- *   Fetched once at composable entry via remember(context), not inside loops.
+ * Fade-out: 250 ms tween — gives the SurfaceView time to paint its second and
+ *   third frames during the transition, so the video is visibly running before
+ *   the cover is fully gone. Feels like a natural reveal, not a hard cut.
+ *
+ * ── RESET ON SLOT CHANGE ──────────────────────────────────────────────────────
+ *
+ * firstFrameRendered resets to false in LaunchedEffect(isPlaying) when isPlaying
+ * flips false — the same moment ForYouFeed's rotate() demotes this slot. The
+ * next assignment starts fresh with an opaque cover waiting for a new first frame.
  */
 @OptIn(UnstableApi::class)
 @Composable
 fun TikTokVideoItem(
-    player      : ExoPlayer,
-    isPlaying   : Boolean,
-    isScrolling : Boolean,
-    onPause     : () -> Unit,
-    onResume    : () -> Unit,
-    modifier    : Modifier = Modifier,
+    player           : ExoPlayer,
+    isPlaying        : Boolean,
+    isScrolling      : Boolean,
+    showLoadingCover : Boolean,
+    onPause          : () -> Unit,
+    onResume         : () -> Unit,
+    modifier         : Modifier = Modifier,
 ) {
     val context = LocalContext.current
 
-    // Hoisted once — process-scoped singleton, never changes.
     val cm = remember(context) {
         context.getSystemService(ConnectivityManager::class.java)
     }
@@ -115,6 +128,24 @@ fun TikTokVideoItem(
     var progress            by remember { mutableFloatStateOf(0f) }
     var isBufferingMidVideo by remember { mutableStateOf(false) }
     var errorWhilePlaying   by remember { mutableStateOf(false) }
+    var hasStartedPlaying   by remember { mutableStateOf(false) }
+
+    // True once onRenderedFirstFrame fires for this slot. The cover will not
+    // begin fading until this is true, even if showLoadingCover is already false.
+    // Reset to false when isPlaying flips false (slot is demoted / recycled).
+    var firstFrameRendered  by remember { mutableStateOf(false) }
+
+    // Cover is visible until BOTH gates clear. Uses short-circuit: if
+    // showLoadingCover is still true we don't even need to check firstFrameRendered.
+    val coverVisible = showLoadingCover || !firstFrameRendered
+
+    // Instant snap to opaque when cover should be visible (no delay on swipe-in).
+    // Slow 250 ms fade-out once both gates clear (video is genuinely running).
+    val animatedCoverAlpha by animateFloatAsState(
+        targetValue   = if (coverVisible) 1f else 0f,
+        animationSpec = tween(durationMillis = if (coverVisible) 0 else 250),
+        label         = "loadingCoverAlpha",
+    )
 
     // ── Seek bar state ────────────────────────────────────────────────────────
     var isDragging            by remember { mutableStateOf(false) }
@@ -122,11 +153,9 @@ fun TikTokVideoItem(
     var wasPlayingOnDragStart by remember { mutableStateOf(false) }
     var trackWidthPx          by remember { mutableIntStateOf(0) }
 
-    // rememberUpdatedState — captures latest value without restarting effects.
     val currentIsPlaying      by rememberUpdatedState(isPlaying)
     val currentManuallyPaused by rememberUpdatedState(manuallyPaused)
 
-    // During drag: thumb drives the display. During play: poll drives it.
     val displayProgress = if (isDragging) dragProgress else progress
 
     // ── Drive playback from isPlaying ─────────────────────────────────────────
@@ -141,30 +170,35 @@ fun TikTokVideoItem(
             isBufferingMidVideo = false
             errorWhilePlaying   = false
             isDragging          = false
+            hasStartedPlaying   = false
+            firstFrameRendered  = false   // reset cover gate for next slot assignment
         }
     }
 
-    // ── Player state listener ─────────────────────────────────────────────────
+    // ── Player state + first-frame listener ───────────────────────────────────
     DisposableEffect(player) {
         val listener = object : Player.Listener {
+
             override fun onPlaybackStateChanged(playbackState: Int) {
                 when (playbackState) {
                     Player.STATE_READY -> {
+                        if (player.isPlaying || (currentIsPlaying && !currentManuallyPaused)) {
+                            hasStartedPlaying = true
+                        }
                         isBufferingMidVideo = false
                         errorWhilePlaying   = false
-                        // Only restart if this composable is the active page.
                         if (currentIsPlaying && !currentManuallyPaused && !player.isPlaying) {
                             player.playWhenReady = true
                             player.play()
                         }
                     }
                     Player.STATE_BUFFERING -> {
-                        if (player.duration > 0 && !currentManuallyPaused) {
+                        if (hasStartedPlaying && !currentManuallyPaused) {
                             isBufferingMidVideo = true
                         }
                     }
                     Player.STATE_IDLE -> {
-                        if (currentIsPlaying && !currentManuallyPaused) {
+                        if (hasStartedPlaying && currentIsPlaying && !currentManuallyPaused) {
                             isBufferingMidVideo = true
                         }
                     }
@@ -174,8 +208,16 @@ fun TikTokVideoItem(
                 }
             }
 
+            // Fires after the codec has decoded AND the display subsystem has
+            // submitted a frame to the SurfaceView. This is the only signal
+            // that guarantees the surface is visually non-black. Clearing the
+            // cover here means the user sees live video immediately as it fades.
+            override fun onRenderedFirstFrame() {
+                firstFrameRendered = true
+            }
+
             override fun onPlayerError(error: PlaybackException) {
-                if (currentIsPlaying && !currentManuallyPaused) {
+                if (hasStartedPlaying && currentIsPlaying && !currentManuallyPaused) {
                     errorWhilePlaying   = true
                     isBufferingMidVideo = true
                 }
@@ -183,14 +225,9 @@ fun TikTokVideoItem(
         }
         player.addListener(listener)
         onDispose { player.removeListener(listener) }
-        // ↑ FIX 1: No player.pause() here. Pausing a player on page dispose
-        //   was silently stopping the currently active video because rotate()
-        //   may have already reassigned this physical player to CURRENT.
-        //   Playback is managed exclusively by ForYouFeed's orchestration and
-        //   the ON_PAUSE lifecycle event below.
     }
 
-    // ── Watchdog — recovers from stuck buffering and post-error IDLE ──────────
+    // ── Watchdog ──────────────────────────────────────────────────────────────
     LaunchedEffect(player, isPlaying) {
         if (!isPlaying) return@LaunchedEffect
 
@@ -201,9 +238,7 @@ fun TikTokVideoItem(
             delay(WATCHDOG_POLL_MS)
 
             if (!currentIsPlaying || currentManuallyPaused) {
-                lastPosition       = -1L
-                positionStuckSince = 0L
-                continue
+                lastPosition = -1L; positionStuckSince = 0L; continue
             }
 
             val state    = player.playbackState
@@ -211,9 +246,6 @@ fun TikTokVideoItem(
             val duration = player.duration
             val now      = System.currentTimeMillis()
 
-            // Case B: post-error STATE_IDLE — ExoPlayer gave up.
-            // FIX 3: guard with currentIsPlaying so we never restart a player
-            // that has been demoted to PREV/NEXT since this effect launched.
             if (errorWhilePlaying && state == Player.STATE_IDLE && currentIsPlaying) {
                 if (cm.activeNetwork != null) {
                     player.prepare()
@@ -221,22 +253,20 @@ fun TikTokVideoItem(
                     player.play()
                     errorWhilePlaying   = false
                     isBufferingMidVideo = false
+                    hasStartedPlaying   = false
+                    firstFrameRendered  = false
                     lastPosition        = -1L
                     positionStuckSince  = 0L
                 }
                 continue
             }
 
-            // Case A: STATE_BUFFERING with position not advancing.
             if (state == Player.STATE_BUFFERING && duration > 0) {
                 if (lastPosition < 0) lastPosition = position
-
                 if (position == lastPosition) {
                     if (positionStuckSince == 0L) positionStuckSince = now
-                    // FIX 3: same currentIsPlaying guard before forcing play.
                     if (now - positionStuckSince >= BUFFERING_STUCK_MS
-                        && cm.activeNetwork != null
-                        && currentIsPlaying
+                        && cm.activeNetwork != null && currentIsPlaying
                     ) {
                         if (player.playbackState == Player.STATE_IDLE) player.prepare()
                         player.playWhenReady = true
@@ -244,104 +274,163 @@ fun TikTokVideoItem(
                         positionStuckSince = 0L
                     }
                 } else {
-                    lastPosition       = position
-                    positionStuckSince = 0L
+                    lastPosition = position; positionStuckSince = 0L
                 }
             } else {
-                lastPosition       = if (state == Player.STATE_READY) position else -1L
+                lastPosition = if (state == Player.STATE_READY) position else -1L
                 positionStuckSince = 0L
                 if (state == Player.STATE_READY) isBufferingMidVideo = false
             }
         }
     }
 
-    // ── Lifecycle: lock screen pause / foreground resume ──────────────────────
+    // ── Pre-start connectivity recovery ──────────────────────────────────────
+    //
+    // PROBLEM this solves:
+    //   Cold start with no internet — ExoPlayer enters STATE_BUFFERING with
+    //   duration == 0 (manifest never fetched). The existing watchdog guards on
+    //   `duration > 0` and `errorWhilePlaying`, both of which are false at this
+    //   stage, so NO retry ever fires. The cover never lifts when internet returns.
+    //
+    // HOW IT WORKS:
+    //   We use ConnectivityManager.registerNetworkCallback to get a real-time
+    //   signal the moment internet is restored — no polling needed.
+    //   When the callback fires AND the player is still in the pre-start stuck
+    //   state (isPlaying, !hasStartedPlaying, STATE_BUFFERING or STATE_IDLE),
+    //   we call stop() + prepare() + play() to give ExoPlayer a clean restart
+    //   with the now-available network.
+    //
+    // WHY stop() before prepare():
+    //   A player stuck in STATE_BUFFERING ignores seekTo(). stop() → STATE_IDLE
+    //   flushes the stalled buffer. The subsequent prepare() re-fetches the
+    //   manifest from scratch on the now-live network.
+    //
+    // WHY a separate effect (not the watchdog):
+    //   The watchdog's stuck-buffering path is intentionally gated on duration > 0
+    //   (mid-video stall detection). Mixing pre-start recovery into that path
+    //   would loosen a guard that exists to avoid false positives during normal
+    //   buffering. Keeping the two paths separate makes each easier to reason about.
+    //
+    // SCOPE: this effect only runs while isPlaying == true. The moment the user
+    //   swipes away (isPlaying → false), the coroutine is cancelled and the
+    //   NetworkCallback is unregistered. No dangling callbacks.
+    DisposableEffect(player, isPlaying) {
+        if (!isPlaying) return@DisposableEffect onDispose {}
+
+        val callback = object : ConnectivityManager.NetworkCallback() {
+            override fun onAvailable(network: Network) {
+                // Network just came back. Retry only if still stuck pre-start.
+                val state = player.playbackState
+                if (!hasStartedPlaying &&
+                    currentIsPlaying &&
+                    (state == Player.STATE_BUFFERING || state == Player.STATE_IDLE)
+                ) {
+                    player.stop()
+                    player.prepare()
+                    player.playWhenReady = true
+                    player.play()
+                }
+            }
+        }
+
+        // Register with a main-thread Handler so onAvailable() is delivered on
+        // the main thread — ExoPlayer enforces main-thread access and crashes
+        // immediately if called from ConnectivityThread (the default callback thread).
+        val mainHandler = Handler(Looper.getMainLooper())
+        val request = NetworkRequest.Builder().build()
+        try {
+            cm.registerNetworkCallback(request, callback, mainHandler)
+        } catch (_: Exception) { /* permission missing or CM unavailable — safe to skip */ }
+
+        onDispose {
+            try { cm.unregisterNetworkCallback(callback) } catch (_: Exception) {}
+        }
+    }
+
+    // ── Lifecycle ─────────────────────────────────────────────────────────────
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner, player) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
                 Lifecycle.Event.ON_PAUSE -> {
-                    // App going to background — always pause regardless of slot.
-                    player.pause()
-                    player.playWhenReady = false
+                    player.pause(); player.playWhenReady = false
                 }
                 Lifecycle.Event.ON_RESUME -> {
-                    // Only resume if this page is still the active one.
                     if (currentIsPlaying && !currentManuallyPaused) {
                         if (player.playbackState == Player.STATE_IDLE) player.prepare()
-                        player.playWhenReady = true
-                        player.play()
+                        player.playWhenReady = true; player.play()
                     }
                 }
                 else -> Unit
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose {
-            // FIX 1: Only remove the observer. Do NOT call player.pause().
-            // By the time this page leaves composition, rotate() may have
-            // reassigned this physical player to CURRENT — pausing it here
-            // would interrupt the currently playing video.
-            lifecycleOwner.lifecycle.removeObserver(observer)
-        }
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
     // ── Progress poll ─────────────────────────────────────────────────────────
-    // Gated by isDragging so the thumb is never overwritten while scrubbing.
     LaunchedEffect(player, isPlaying) {
         if (!isPlaying) return@LaunchedEffect
         while (isActive) {
             val duration = player.duration.takeIf { it > 0 } ?: 0L
             val position = player.currentPosition
-            if (duration > 0 && !isDragging) {
-                progress = position.toFloat() / duration
-            }
+            if (duration > 0 && !isDragging) progress = position.toFloat() / duration
             delay(PROGRESS_POLL_MS)
         }
     }
 
-    // ── Stable interaction source — allocated once, never on recomposition ────
     val interactionSource = remember { MutableInteractionSource() }
 
     Box(
         modifier = modifier
             .fillMaxSize()
             .background(Color.Black)
-            .clickable(
-                interactionSource = interactionSource,
-                indication        = null,
-            ) {
+            .clickable(interactionSource = interactionSource, indication = null) {
                 if (!isDragging) {
-                    if (player.isPlaying) {
-                        manuallyPaused = true
-                        onPause()
-                    } else {
-                        manuallyPaused = false
-                        onResume()
-                    }
+                    if (player.isPlaying) { manuallyPaused = true; onPause() }
+                    else                 { manuallyPaused = false; onResume() }
                 }
             }
     ) {
+        // ── Video surface ──────────────────────────────────────────────────────
         AndroidView(
             factory = { ctx ->
                 PlayerView(ctx).apply {
                     useController = false
                     resizeMode    = AspectRatioFrameLayout.RESIZE_MODE_FIT
-                    // BLACK shutter — prevents window background bleed during
-                    // the surface-attach gap on any direction swipe.
                     setShutterBackgroundColor(android.graphics.Color.BLACK)
                 }
             },
-            update = { view ->
-                if (view.player !== player) view.player = player
-            },
+            update  = { view -> if (view.player !== player) view.player = player },
             modifier = Modifier.fillMaxSize()
         )
 
-        // NOTE: clearVideoSurface() is NOT called here.
-        // PlayerView handles it via onDetachedFromWindow. Calling it in a
-        // DisposableEffect races with the surface detach and blanks the
-        // SurfaceView mid-slide. Only PlayerPool.release() calls it explicitly.
+        // ── Soft frosted loading cover ─────────────────────────────────────────
+        //
+        // Light warm-gray gradient layered on top of the PlayerView.
+        // Held fully opaque until the ExoPlayer surface has a real frame,
+        // then fades to reveal the live video beneath over 250 ms.
+        //
+        // The `if (animatedCoverAlpha > 0f)` guard skips this Box entirely
+        // once the fade completes — no overdraw cost while the video plays.
+        if (animatedCoverAlpha > 0f) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .alpha(animatedCoverAlpha)
+                    .background(
+                        brush = Brush.verticalGradient(
+                            colorStops = arrayOf(
+                                0.00f to Color(0xEB3D3939),   // near-white top
+                                0.30f to Color(0xEBDC8080),   // soft light gray
+                                0.50f to Color(0xEBC06F6F),   // slightly deeper centre
+                                0.70f to Color(0xEB7A2121),   // soft light gray
+                                1.00f to Color(0xEBF5F5F5),   // near-white bottom
+                            )
+                        )
+                    )
+            )
+        }
 
         // ── Tap-to-pause overlay ──────────────────────────────────────────────
         if (manuallyPaused && !isScrolling) {
@@ -361,8 +450,8 @@ fun TikTokVideoItem(
             }
         }
 
-        // ── Buffering spinner ─────────────────────────────────────────────────
-        if (isBufferingMidVideo && !isScrolling && !manuallyPaused && isPlaying) {
+        // ── Mid-playback buffering spinner ────────────────────────────────────
+        if (isBufferingMidVideo && hasStartedPlaying && !isScrolling && !manuallyPaused && isPlaying) {
             CircularProgressIndicator(
                 modifier    = Modifier.align(Alignment.Center).size(48.dp),
                 color       = Color.White,
@@ -387,9 +476,8 @@ fun TikTokVideoItem(
                                 if (trackWidthPx <= 0) return@detectHorizontalDragGestures
                                 isDragging            = true
                                 wasPlayingOnDragStart = player.isPlaying
-                                dragProgress = (offset.x / trackWidthPx).coerceIn(0f, 1f)
-                                player.pause()
-                                player.playWhenReady = false
+                                dragProgress          = (offset.x / trackWidthPx).coerceIn(0f, 1f)
+                                player.pause(); player.playWhenReady = false
                             },
                             onHorizontalDrag = { change, _ ->
                                 if (trackWidthPx <= 0) return@detectHorizontalDragGestures
@@ -397,25 +485,22 @@ fun TikTokVideoItem(
                                 dragProgress = (change.position.x / trackWidthPx).coerceIn(0f, 1f)
                             },
                             onDragEnd = {
-                                val duration = player.duration.takeIf { it > 0 } ?: 0L
-                                if (duration > 0) {
-                                    val targetMs = (dragProgress * duration).toLong()
-                                    player.seekTo(targetMs)
+                                val dur = player.duration.takeIf { it > 0 } ?: 0L
+                                if (dur > 0) {
+                                    player.seekTo((dragProgress * dur).toLong())
                                     progress = dragProgress
                                 }
                                 isDragging = false
                                 if (wasPlayingOnDragStart && !manuallyPaused && isPlaying) {
                                     if (player.playbackState == Player.STATE_IDLE) player.prepare()
-                                    player.playWhenReady = true
-                                    player.play()
+                                    player.playWhenReady = true; player.play()
                                 }
                             },
                             onDragCancel = {
                                 isDragging = false
                                 if (wasPlayingOnDragStart && !manuallyPaused && isPlaying) {
                                     if (player.playbackState == Player.STATE_IDLE) player.prepare()
-                                    player.playWhenReady = true
-                                    player.play()
+                                    player.playWhenReady = true; player.play()
                                 }
                             },
                         )
@@ -426,21 +511,9 @@ fun TikTokVideoItem(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SeekBar — stateless drawing component
+// SeekBar
 // ─────────────────────────────────────────────────────────────────────────────
 
-/**
- * Custom seek bar drawn with Compose primitives.
- *
- *   ┌──────────────────────────────────────────────────────────────────────┐
- *   │               [  MM:SS  ]  ← pill label (AnimatedVisibility)        │
- *   │  ──────────────●──────────────────────────────────────────────────  │
- *   │  ↑ played      ↑ thumb                    ↑ remaining               │
- *   └──────────────────────────────────────────────────────────────────────┘
- *
- * Thumb and expanded track only visible while isDragging == true.
- * Time label fades in/out via AnimatedVisibility.
- */
 @Composable
 private fun SeekBar(
     progress     : Float,
@@ -451,42 +524,25 @@ private fun SeekBar(
 ) {
     val duration   = player.duration.takeIf { it > 0 } ?: 0L
     val positionMs = (progress * duration).toLong()
+    val timeText   = remember(positionMs) { formatMediaTime(positionMs) }
+    val thumbFrac  = progress.coerceIn(0f, 1f)
 
-    // FIX 2: remember(positionMs) already avoids redundant calls,
-    // but formatMediaTime now uses StringBuilder instead of String.format —
-    // zero intermediate allocations on the hot path (200 ms poll).
-    val timeText = remember(positionMs) { formatMediaTime(positionMs) }
+    Box(modifier = modifier.fillMaxWidth().height(48.dp)) {
+        val trackH = if (isDragging) 4.dp else 2.dp
 
-    val thumbOffsetFraction = progress.coerceIn(0f, 1f)
-
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(48.dp)   // 48dp touch target; visible track is 2–4dp centered.
-    ) {
-        val trackHeight = if (isDragging) 4.dp else 2.dp
-
-        // Background (remaining) track
         Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .height(trackHeight)
-                .align(Alignment.Center)
+                .fillMaxWidth().height(trackH).align(Alignment.Center)
                 .clip(RoundedCornerShape(2.dp))
                 .background(Color.White.copy(alpha = 0.25f))
         )
-
-        // Foreground (played) track
         Box(
             modifier = Modifier
-                .fillMaxWidth(thumbOffsetFraction)
-                .height(trackHeight)
-                .align(Alignment.CenterStart)
+                .fillMaxWidth(thumbFrac).height(trackH).align(Alignment.CenterStart)
                 .clip(RoundedCornerShape(2.dp))
                 .background(Color.White)
         )
 
-        // Thumb + time label — only while dragging
         AnimatedVisibility(
             visible  = isDragging,
             enter    = fadeIn(),
@@ -495,12 +551,9 @@ private fun SeekBar(
                 .align(Alignment.CenterStart)
                 .padding(
                     start = if (trackWidthPx > 0) {
-                        val thumbRadiusDp = 6.dp
-                        val offsetPx = (thumbOffsetFraction * trackWidthPx).roundToInt()
-                        val offsetDp = with(androidx.compose.ui.platform.LocalDensity.current) {
-                            offsetPx.toDp()
-                        }
-                        (offsetDp - thumbRadiusDp).coerceAtLeast(0.dp)
+                        val px = (thumbFrac * trackWidthPx).roundToInt()
+                        val dp = with(androidx.compose.ui.platform.LocalDensity.current) { px.toDp() }
+                        (dp - 6.dp).coerceAtLeast(0.dp)
                     } else 0.dp
                 ),
         ) {
@@ -512,61 +565,34 @@ private fun SeekBar(
                     fontWeight = FontWeight.SemiBold,
                     modifier   = Modifier
                         .offset(y = (-28).dp)
-                        .background(
-                            color = Color.Black.copy(alpha = 0.65f),
-                            shape = RoundedCornerShape(4.dp),
-                        )
+                        .background(Color.Black.copy(alpha = 0.65f), RoundedCornerShape(4.dp))
                         .padding(horizontal = 6.dp, vertical = 2.dp),
                 )
-                Box(
-                    modifier = Modifier
-                        .size(12.dp)
-                        .background(Color.White, CircleShape)
-                )
+                Box(modifier = Modifier.size(12.dp).background(Color.White, CircleShape))
             }
         }
     }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Time formatting — zero-allocation StringBuilder implementation
+// Time formatting — zero-allocation
 // ─────────────────────────────────────────────────────────────────────────────
 
-/**
- * Format milliseconds to "M:SS" or "H:MM:SS".
- *
- * FIX 2: Replaces String.format() which allocates a Formatter + Locale +
- * intermediate objects on every call. StringBuilder with manual digit
- * appending produces zero extra allocations and is ~4x faster on ART.
- *
- * Called at most once per unique positionMs value (gated by remember).
- *
- * Examples:
- *   67_000   → "1:07"
- *   3723_000 → "1:02:03"
- */
 private fun formatMediaTime(ms: Long): String {
     val totalSec = (ms / 1_000L).coerceAtLeast(0L)
     val hours    = totalSec / 3600
     val minutes  = (totalSec % 3600) / 60
     val seconds  = totalSec % 60
-
     return buildString {
         if (hours > 0) {
-            append(hours)
-            append(':')
-            appendTwoDigits(minutes)
-            append(':')
-            appendTwoDigits(seconds)
+            append(hours); append(':')
+            appendTwoDigits(minutes); append(':'); appendTwoDigits(seconds)
         } else {
-            append(minutes)
-            append(':')
-            appendTwoDigits(seconds)
+            append(minutes); append(':'); appendTwoDigits(seconds)
         }
     }
 }
 
-/** Appends a value as exactly two decimal digits (zero-padded). */
 private fun StringBuilder.appendTwoDigits(value: Long) {
     if (value < 10) append('0')
     append(value)

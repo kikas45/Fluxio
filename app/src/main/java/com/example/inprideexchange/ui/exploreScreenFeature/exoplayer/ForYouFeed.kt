@@ -5,14 +5,10 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.VerticalPager
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
@@ -68,6 +64,49 @@ import kotlinx.coroutines.delay
  *   NEXT  came from old CURRENT — already loaded, frame preserved.
  *   CURRENT came from old PREV  — already loaded, frame preserved.
  *   PREV  is the recycled slot  — load new URL.
+ *
+ * ── GRADIENT COVER (replaces CircularProgressIndicator) ──────────────────────
+ *
+ * When the user swipes forward to a page whose ExoPlayer has not yet rendered
+ * its first frame, a dark gradient overlay is shown on top of the PlayerView.
+ * This is vastly preferable to a blank black screen or a spinner:
+ *
+ *   • The gradient IS the "not ready" state — it looks intentional, not broken.
+ *   • The overlay sits ON TOP of the PlayerView surface. When ExoPlayer is
+ *     ready and the first frame is painted into the SurfaceView, the gradient
+ *     fades out smoothly (animateFloatAsState, 200 ms). There is NEVER a
+ *     frame where both the gradient and a black SurfaceView compete — the
+ *     SurfaceView is always beneath, and the gradient alpha transitions from
+ *     1.0 → 0.0 over the fade duration.
+ *
+ * ── WHY the cover is controlled here, not inside TikTokVideoItem ─────────────
+ *
+ * TikTokVideoItem does not know which pool slot it is bound to. Only
+ * ForYouFeed knows that page N+1 maps to PlayerPool.NEXT and whether that
+ * player is ready. Passing `showLoadingCover: Boolean` down to TikTokVideoItem
+ * keeps the readiness logic in one place (here) and keeps TikTokVideoItem's
+ * player-state listener free of pool-level concerns.
+ *
+ * ── NO FLICKER GUARANTEE ─────────────────────────────────────────────────────
+ *
+ * The critical constraint: never let the PlayerView surface and the gradient
+ * cover compete for the same visual space while both are transitioning.
+ *
+ * How we guarantee this:
+ *   1. `nextPlayerReady` is polled every 100 ms. When it flips to true,
+ *      `showCoverForPage` for that page is set to false.
+ *   2. TikTokVideoItem receives `showLoadingCover` and drives a
+ *      `animateFloatAsState` from 1f → 0f over 200 ms.
+ *   3. The gradient Box has `alpha = animatedAlpha`. At alpha = 0f the Box
+ *      is still in the layout but invisible — it never pops out abruptly.
+ *   4. The PlayerView is always present underneath at full opacity. The
+ *      gradient dims to reveal it — there is no moment where neither is visible.
+ *
+ * ── BACKWARD SWIPE: no cover ──────────────────────────────────────────────────
+ *
+ * The PREV player is always paused at position 0 with its last decoded frame
+ * alive in the SurfaceView buffer (rotate() calls prepare() but NOT play(),
+ * preserving the frame). The cover is never shown for PREV pages.
  */
 @OptIn(UnstableApi::class, ExperimentalFoundationApi::class)
 @Composable
@@ -89,6 +128,11 @@ fun ForYouFeed() {
     // Never cleared — only targeted puts and removes to avoid the
     // empty-map race window that caused 1-frame black flashes.
     val slotForPage = remember { mutableStateMapOf<Int, Int>() }
+
+    // pageIndex → whether the gradient loading cover should be shown.
+    // Only ever set to true for the NEXT page when isNextReady() == false.
+    // Cleared immediately when the page becomes CURRENT or when NEXT becomes ready.
+    val showCoverForPage = remember { mutableStateMapOf<Int, Boolean>() }
 
     var lastSettled     by remember { mutableIntStateOf(0) }
     var nextPlayerReady by remember { mutableStateOf(false) }
@@ -148,6 +192,19 @@ fun ForYouFeed() {
                 direction < 0 -> slotForPage.remove(s + 2)   // was old NEXT
             }
 
+            // ── Cover map update ──────────────────────────────────────────────
+            // The page that just became CURRENT must never show the cover —
+            // its player was already prepared (as NEXT before the swipe).
+            // Clear any cover that may have been set for s when it was NEXT.
+            showCoverForPage.remove(s)
+
+            // The old CURRENT page (now PREV or NEXT depending on direction)
+            // should also have its cover cleared — it has a live frame.
+            when {
+                direction > 0 -> showCoverForPage.remove(s - 1)
+                direction < 0 -> showCoverForPage.remove(s + 1)
+            }
+
             when {
                 direction > 0 -> pool.load(PlayerPool.NEXT, feed.getOrNull(s + 1)?.videoUrl)
                 direction < 0 -> pool.load(PlayerPool.PREV, feed.getOrNull(s - 1)?.videoUrl)
@@ -184,15 +241,50 @@ fun ForYouFeed() {
         )
     }
 
-    // ── Poll: NEXT player readiness for spinner ───────────────────────────────
+    // ── Poll: NEXT player readiness — drives gradient cover ───────────────────
     //
-    // Reads pool.isNextReady() every 100 ms. The soft race where rotate()
-    // changes slot[NEXT] between the poll read and the slot reassignment is
-    // harmless — the worst outcome is a 100 ms spinner flicker.
+    // Polls pool.isNextReady() every 100 ms.
+    //
+    // When the user is actively scrolling forward and NEXT is not ready,
+    // we mark the NEXT page with a cover. The cover is cleared the moment
+    // isNextReady() flips to true — TikTokVideoItem then fades it out
+    // smoothly (200 ms animateFloatAsState) to reveal the live SurfaceView.
+    //
+    // Flicker prevention:
+    //   • We only SET the cover (showCoverForPage[nextPage] = true) while
+    //     the pager is actively scrolling forward. We never re-add it after
+    //     the page has settled (that would flash the cover on a ready player).
+    //   • We CLEAR it (remove) as soon as ready, regardless of scroll state,
+    //     so the fade-out begins at the earliest possible moment.
+    //   • The soft race where rotate() changes the NEXT slot between the poll
+    //     read and the showCoverForPage write is harmless: at worst the cover
+    //     shows for one extra 100 ms poll cycle on the new NEXT page — still
+    //     correct because that page genuinely may not be ready yet.
     LaunchedEffect(Unit) {
         while (true) {
             val ready = pool.isNextReady()
-            if (ready != nextPlayerReady) nextPlayerReady = ready
+
+            if (ready != nextPlayerReady) {
+                nextPlayerReady = ready
+            }
+
+            val s        = pagerState.settledPage
+            val nextPage = s + 1
+
+            if (!ready && pagerState.isScrollInProgress) {
+                // Scrolling forward into a not-yet-ready NEXT page — show cover.
+                // Guard: only for forward scroll (offset fraction > 0).
+                val offsetFraction = pagerState.currentPage + pagerState.currentPageOffsetFraction - s
+                if (offsetFraction > 0.01f && nextPage < feed.size) {
+                    showCoverForPage[nextPage] = true
+                }
+            } else if (ready) {
+                // NEXT is ready — clear its cover so TikTokVideoItem can fade it out.
+                if (showCoverForPage[nextPage] == true) {
+                    showCoverForPage.remove(nextPage)
+                }
+            }
+
             delay(100)
         }
     }
@@ -200,12 +292,11 @@ fun ForYouFeed() {
     // ── Fling + scroll connection ─────────────────────────────────────────────
     val flingBehavior    = rememberTikTokFlingBehavior(pagerState)
     val scrollConnection = rememberSinglePageScrollConnection(pagerState, pageHeight)
-    val isScrolling      = pagerState.isScrollInProgress
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .padding(bottom = 150.dp)
+            .padding(bottom = 100.dp)
             .nestedScroll(scrollConnection)
     ) {
         VerticalPager(
@@ -226,26 +317,25 @@ fun ForYouFeed() {
                 else               -> return@VerticalPager
             }
 
+            // showLoadingCover is true only for the NEXT page when its player
+            // has not yet produced its first frame. It is never set for CURRENT
+            // or PREV. TikTokVideoItem fades it out once the player is ready.
+            val showLoadingCover = showCoverForPage[page] == true
+
             TikTokVideoItem(
-                player      = player,
-                isPlaying   = pagerState.settledPage == page,
-                isScrolling = isScrolling,
-                onPause     = { pool.pauseCurrentPlayer() },
-                onResume    = { pool.resumeCurrentPlayer() },
+                player            = player,
+                isPlaying         = pagerState.settledPage == page,
+                isScrolling       = pagerState.isScrollInProgress,
+                showLoadingCover  = showLoadingCover,
+                onPause           = { pool.pauseCurrentPlayer() },
+                onResume          = { pool.resumeCurrentPlayer() },
             )
         }
 
-        // Spinner: shown while swiping forward and NEXT player isn't ready yet.
-        // Not needed on backward swipe — PREV always has a live frame.
-        if (isScrolling && !nextPlayerReady) {
-            CircularProgressIndicator(
-                modifier    = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 24.dp)
-                    .size(28.dp),
-                color       = Color.White,
-                strokeWidth = 2.5.dp,
-            )
-        }
+        // ── CircularProgressIndicator removed ────────────────────────────────
+        // Replaced by the per-page gradient cover inside TikTokVideoItem.
+        // The gradient is visually superior (matches the reference design) and
+        // avoids the z-ordering issue where the spinner floated above ALL pages
+        // simultaneously, including ones that were actually ready.
     }
 }

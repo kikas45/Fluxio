@@ -63,9 +63,17 @@ import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
  *
  * ── NETWORK RECOVERY ─────────────────────────────────────────────────────────
  *
- * playCurrentPlayer() skips seekTo(0) when CURRENT is not STATE_IDLE —
- * preserves mid-video position during network stall recovery.
- * playCurrentPlayerFromStart() is the explicit boot variant only.
+ * If the internet drops while a video is playing, ExoPlayer enters STATE_BUFFERING
+ * and the UI shows a spinner (handled by TikTokVideoItem). When internet returns,
+ * resumeCurrentPlayer() is called and playback continues — this path is unchanged.
+ *
+ * The fixed path: if the user swipes away while STATE_BUFFERING (internet still down),
+ * rotate() now calls stop() before seekTo(0) + prepare() on the demoted player.
+ * stop() → STATE_IDLE clears the stalled buffer. The subsequent seekTo(0) + prepare()
+ * always lands cleanly and re-loads from position 0 (cache for the first segment,
+ * then network for the rest). When the user swipes back, playCurrentPlayer() also
+ * calls stop() + seekTo(0) + prepare() unconditionally — so the video always restarts
+ * from the beginning regardless of what state it was in when it was demoted.
  */
 @UnstableApi
 class PlayerPool(context: Context) {
@@ -93,10 +101,14 @@ class PlayerPool(context: Context) {
         val player  = p[physIdx]
 
         if (loadedUrl[physIdx] == url) {
-            // Already loaded — just make sure it's prepared and at position 0.
-            if (player.playbackState == Player.STATE_IDLE) player.prepare()
+            // Same URL — reset to position 0 regardless of current state.
+            // stop() first in case the player is in STATE_BUFFERING (a network
+            // drop may have stalled it); seekTo() is silently ignored on a
+            // buffering player, so stop() → STATE_IDLE is required first.
+            if (player.playbackState != Player.STATE_IDLE) player.stop()
             player.seekTo(0)
             player.playWhenReady = false
+            player.prepare()
             return
         }
 
@@ -112,16 +124,33 @@ class PlayerPool(context: Context) {
     // ── Playback control ──────────────────────────────────────────────────────
 
     /**
-     * Start/resume CURRENT without resetting the playhead.
-     * Pauses PREV and NEXT (frames stay alive — not stopped).
-     * seekTo(0) on CURRENT only if STATE_IDLE (first start) — preserves
-     * mid-video position during network-drop recovery.
+     * Start CURRENT from the beginning. Always seeks to 0.
+     *
+     * ── WHY we always seekTo(0) here (changed from STATE_IDLE guard) ──────────
+     *
+     * The old guard `if (playbackState == STATE_IDLE) seekTo(0)` was designed
+     * to preserve mid-video position during a network stall on the CURRENT
+     * screen (internet drops → spinner shows → internet returns → continues).
+     * That use-case is now handled by resumeCurrentPlayer() from TikTokVideoItem.
+     *
+     * The guard became a bug when a player arrived in the CURRENT slot in
+     * STATE_BUFFERING (internet dropped mid-video, user swiped away and back):
+     *   • rotate() called seekTo(0) on a buffering player → silently dropped.
+     *   • playCurrentPlayer() saw STATE_BUFFERING (not STATE_IDLE) → skipped seekTo.
+     *   • play() resumed buffering from the stalled position → frozen frame, no spinner.
+     *
+     * Fix: always stop() + seekTo(0) + prepare() so the player is guaranteed to
+     * start from position 0 regardless of what state it arrived in.
+     * stop() → STATE_IDLE (clears the stalled buffer), then seekTo(0) + prepare()
+     * re-loads from the cache/network cleanly from the start.
      */
     fun playCurrentPlayer() {
         p[slot[PREV]].apply  { pause(); playWhenReady = false }
         p[slot[NEXT]].apply  { pause(); playWhenReady = false }
         p[slot[CURRENT]].apply {
-            if (playbackState == Player.STATE_IDLE) seekTo(0)
+            stop()          // → STATE_IDLE, clears any stalled buffer state
+            seekTo(0)
+            prepare()       // re-prepare from position 0 (cache-first)
             playWhenReady = true
             play()
         }
@@ -161,10 +190,17 @@ class PlayerPool(context: Context) {
                 val physCurrent = slot[CURRENT]
                 val physNext    = slot[NEXT]
 
-                // Demote CURRENT: keep last frame alive in SurfaceView buffer.
-                p[physCurrent].pause()
+                // Demote CURRENT → new PREV.
+                // stop() first to clear any stalled STATE_BUFFERING caused by a network
+                // drop. A buffering player ignores seekTo() — stop() brings it to
+                // STATE_IDLE so the subsequent seekTo(0) + prepare() always lands cleanly.
+                // prepare() re-loads from position 0 (cache-first), and keeps the last
+                // decoded frame alive in the SurfaceView buffer until the first new frame
+                // arrives — so there is no black flash on backward swipe.
+                p[physCurrent].stop()
                 p[physCurrent].seekTo(0)
                 p[physCurrent].playWhenReady = false
+                p[physCurrent].prepare()
 
                 // Recycle old PREV — 2 pages back, safe to destroy.
                 p[physPrev].stop()
@@ -185,10 +221,13 @@ class PlayerPool(context: Context) {
                 val physCurrent = slot[CURRENT]
                 val physNext    = slot[NEXT]
 
-                // Demote CURRENT: keep last frame alive.
-                p[physCurrent].pause()
+                // Demote CURRENT → new NEXT. Same stop+seekTo(0)+prepare logic
+                // as the forward case — clears any stalled STATE_BUFFERING so the
+                // player is guaranteed to be at position 0 when promoted back to CURRENT.
+                p[physCurrent].stop()
                 p[physCurrent].seekTo(0)
                 p[physCurrent].playWhenReady = false
+                p[physCurrent].prepare()
 
                 // Recycle old NEXT — lookahead no longer needed.
                 p[physNext].stop()
