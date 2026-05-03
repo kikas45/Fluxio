@@ -9,28 +9,27 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.inprideexchange.ui.exploreScreenFeature.exploreTestData.FollowingFeed
 import com.example.inprideexchange.ui.exploreScreenFeature.exoplayer.ForYouFeed
+import com.example.inprideexchange.ui.exploreScreenFeature.exoplayer.SeekBarViewModel
 
 @Composable
 fun ExploreScreen(
-    viewModel: ExploreViewModel = viewModel()
+    viewModel        : ExploreViewModel = viewModel(),
+    seekBarViewModel : SeekBarViewModel,               // ← passed in
 ) {
     val selectedTab by viewModel.selectedTab.collectAsState()
 
     Box(modifier = Modifier.fillMaxSize()) {
 
-        // 🔥 CONTENT FIRST (goes behind)
         when (selectedTab) {
             ExploreTabItem.Following -> FollowingFeed()
-            ExploreTabItem.ForYou -> ForYouFeed()
+            ExploreTabItem.ForYou    -> ForYouFeed(seekBarViewModel = seekBarViewModel)  // ← forwarded
             else -> {}
         }
 
-        // 🔥 TOP BAR FLOATING ON TOP
         ExploreTopBar(
-            selectedTab = selectedTab,
+            selectedTab   = selectedTab,
             onTabSelected = viewModel::onTabSelected,
             onSearchClick = {}
         )
     }
 }
-

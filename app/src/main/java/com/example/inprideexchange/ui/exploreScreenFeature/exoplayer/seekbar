@@ -1,0 +1,123 @@
+package com.example.inprideexchange.ui.exploreScreenFeature.exoplayer
+
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.media3.exoplayer.ExoPlayer
+import kotlin.math.roundToInt
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SeekBar
+// ─────────────────────────────────────────────────────────────────────────────
+
+@Composable
+fun SeekBar(
+    progress     : Float,
+    isDragging   : Boolean,
+    trackWidthPx : Int,
+    player       : ExoPlayer,
+    modifier     : Modifier = Modifier,
+) {
+    val duration   = player.duration.takeIf { it > 0 } ?: 0L
+    val positionMs = (progress * duration).toLong()
+    val timeText   = remember(positionMs) { formatMediaTime(positionMs) }
+    val thumbFrac  = progress.coerceIn(0f, 1f)
+
+    Box(modifier = modifier.fillMaxWidth().height(48.dp)) {
+        val trackH = if (isDragging) 4.dp else 2.dp
+
+        // Background track
+        Box(
+            modifier = Modifier
+                .fillMaxWidth().height(trackH).align(Alignment.Center)
+                .clip(RoundedCornerShape(2.dp))
+                .background(Color.White.copy(alpha = 0.25f))
+        )
+        // Progress track
+        Box(
+            modifier = Modifier
+                .fillMaxWidth(thumbFrac).height(trackH).align(Alignment.CenterStart)
+                .clip(RoundedCornerShape(2.dp))
+                .background(Color.White)
+        )
+
+        AnimatedVisibility(
+            visible  = isDragging,
+            enter    = fadeIn(),
+            exit     = fadeOut(),
+            modifier = Modifier
+                .align(Alignment.CenterStart)
+                .padding(
+                    start = if (trackWidthPx > 0) {
+                        val px = (thumbFrac * trackWidthPx).roundToInt()
+                        val dp = with(androidx.compose.ui.platform.LocalDensity.current) { px.toDp() }
+                        (dp - 6.dp).coerceAtLeast(0.dp)
+                    } else 0.dp
+                ),
+        ) {
+            // Box layers the time label and ball on top of each other,
+            // both centered — ball sits exactly on the track centre line
+            Box(contentAlignment = Alignment.Center) {
+                // Time label floats above via offset, stays horizontally centred
+                Text(
+                    text       = timeText,
+                    color      = Color.White,
+                    fontSize   = 11.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier   = Modifier
+                        .align(Alignment.TopCenter)
+                        .offset(y = (-28).dp)
+                        .background(Color.Black.copy(alpha = 0.65f), RoundedCornerShape(4.dp))
+                        .padding(horizontal = 6.dp, vertical = 2.dp),
+                )
+                // Thumb ball — centred on the track line
+                Box(modifier = Modifier.size(12.dp).background(Color.White, CircleShape))
+            }
+        }
+    }
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Time formatting — zero-allocation
+// ─────────────────────────────────────────────────────────────────────────────
+
+private fun formatMediaTime(ms: Long): String {
+    val totalSec = (ms / 1_000L).coerceAtLeast(0L)
+    val hours    = totalSec / 3600
+    val minutes  = (totalSec % 3600) / 60
+    val seconds  = totalSec % 60
+    return buildString {
+        if (hours > 0) {
+            append(hours); append(':')
+            appendTwoDigits(minutes); append(':'); appendTwoDigits(seconds)
+        } else {
+            append(minutes); append(':'); appendTwoDigits(seconds)
+        }
+    }
+}
+
+private fun StringBuilder.appendTwoDigits(value: Long) {
+    if (value < 10) append('0')
+    append(value)
+}

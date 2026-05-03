@@ -36,7 +36,6 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
-import androidx.media3.common.VideoSize
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.AspectRatioFrameLayout
@@ -71,12 +70,6 @@ fun TikTokVideoItem(
     var showInitialSpinner  by remember { mutableStateOf(false) }
     var initialSpinnerDone  by remember { mutableStateOf(false) }
 
-    // ── Portrait / landscape resize mode ─────────────────────────────────────
-    // Default to FILL (portrait). Flips to FIT when a landscape video is detected.
-    var videoResizeMode by remember {
-        mutableIntStateOf(AspectRatioFrameLayout.RESIZE_MODE_FILL)
-    }
-
     // Local drag state — mirrored to SeekBarViewModel so AppBottomBar can render it.
     var isDragging            by remember { mutableStateOf(false) }
     var dragProgress          by remember { mutableFloatStateOf(0f) }
@@ -101,9 +94,6 @@ fun TikTokVideoItem(
     // stale TikTokVideoItem that is no longer CURRENT cannot intercept drags.
     DisposableEffect(player, hasStartedPlaying) {
         seekBarViewModel.onDragStart = { fraction ->
-            // Push duration eagerly so the timestamp label is never "0:00 / 0:00"
-            val dur = player.duration.takeIf { it > 0 } ?: 0L
-            if (dur > 0) seekBarViewModel.updateDurationMs(dur)
             if (seekBarViewModel.trackWidthPx > 0 && hasStartedPlaying) {
                 isDragging            = true
                 wasPlayingOnDragStart = player.isPlaying
@@ -176,20 +166,6 @@ fun TikTokVideoItem(
     // ── Player state listener ─────────────────────────────────────────────────
     DisposableEffect(player) {
         val listener = object : Player.Listener {
-
-            // ── Detect portrait vs landscape and switch resize mode ───────────
-            override fun onVideoSizeChanged(videoSize: VideoSize) {
-                if (videoSize.width > 0 && videoSize.height > 0) {
-                    videoResizeMode = if (videoSize.width > videoSize.height) {
-                        // Landscape video → fit inside screen without cropping
-                        AspectRatioFrameLayout.RESIZE_MODE_FIT
-                    } else {
-                        // Portrait (or square) video → fill edge-to-edge
-                        AspectRatioFrameLayout.RESIZE_MODE_FILL
-                    }
-                }
-            }
-
             override fun onPlaybackStateChanged(playbackState: Int) {
                 when (playbackState) {
                     Player.STATE_READY -> {
@@ -315,13 +291,7 @@ fun TikTokVideoItem(
         while (isActive) {
             val duration = player.duration.takeIf { it > 0 } ?: 0L
             val position = player.currentPosition
-            if (duration > 0) {
-                // Keep ViewModel's durationMs in sync so SeekBar can show timestamps
-                if (seekBarViewModel.durationMs.value != duration) {
-                    seekBarViewModel.updateDurationMs(duration)
-                }
-                if (!isDragging) progress = position.toFloat() / duration
-            }
+            if (duration > 0 && !isDragging) progress = position.toFloat() / duration
             delay(PROGRESS_POLL_MS)
         }
     }
@@ -335,9 +305,7 @@ fun TikTokVideoItem(
     ConstraintLayout(
         modifier = modifier
             .fillMaxSize()
-            // .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom))
             .background(Color.Black)
-            .padding(bottom = 98.3.dp)
             .clickable(interactionSource = interactionSource, indication = null) {
                 if (!isDragging) {
                     if (player.isPlaying) { manuallyPaused = true; onPause() }
@@ -352,17 +320,12 @@ fun TikTokVideoItem(
             factory = { ctx ->
                 PlayerView(ctx).apply {
                     useController = false
-                    // Initial default — will be overridden by onVideoSizeChanged
                     resizeMode    = AspectRatioFrameLayout.RESIZE_MODE_FILL
                     setShutterBackgroundColor(android.graphics.Color.BLACK)
                     clipToOutline = true
                 }
             },
-            update = { view ->
-                if (view.player !== player) view.player = player
-                // Apply portrait/landscape mode whenever videoResizeMode state changes
-                view.resizeMode = videoResizeMode
-            },
+            update   = { view -> if (view.player !== player) view.player = player },
             modifier = Modifier.constrainAs(playerViewRef) {
                 top.linkTo(parent.top)
                 bottom.linkTo(parent.bottom)
@@ -371,6 +334,7 @@ fun TikTokVideoItem(
                 width  = Dimension.fillToConstraints
                 height = Dimension.fillToConstraints
             }
+               // .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top))
         )
 
         // ── 2. Initial load spinner ────────────────────────────────────────────

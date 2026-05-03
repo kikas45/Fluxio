@@ -12,6 +12,7 @@ import androidx.compose.runtime.getValue
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.navigation.compose.rememberNavController
 import com.example.inprideexchange.ui.InstaGramReel.ReelsView
+import com.example.inprideexchange.ui.exploreScreenFeature.exoplayer.ForYouFeed
 import com.example.inprideexchange.ui.navigation.AppNavigation
 import com.example.inprideexchange.ui.theme.InPrideExchangeTheme
 import com.example.inprideexchange.ui.themeScreen.ThemeViewModel
@@ -38,7 +39,7 @@ class MainActivity : ComponentActivity() {
                 colorSchemeChoice = currentColorScheme
             ) {
                 AppNavigation(navController = navController)
-              //  ReelsView()
+               // ForYouFeed()
             }
         }
     }

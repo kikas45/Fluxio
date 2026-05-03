@@ -66,17 +66,20 @@ fun MainScreen(topNavController: NavHostController) {
                     )
                 }
             }
-        ) {
+        ) { innerPadding ->
 
             BottomBarNavigation(
                 navController    = bottomNavController,
                 topNavController = topNavController,
                 seekBarViewModel = seekBarViewModel,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(
+                        start  = innerPadding.calculateStartPadding(layoutDirection),
+                        end    = innerPadding.calculateEndPadding(layoutDirection),
+                        bottom = innerPadding.calculateBottomPadding()
+                    )
             )
         }
     }
 }
-
-
-
-

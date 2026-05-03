@@ -1,0 +1,105 @@
+package com.example.inprideexchange.ui.bottomBar.bottomBarrFeatures
+
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
+
+@Composable
+fun AppBottomBar(
+    currentRoute: String?,
+    onItemClick: (BottomNavItem) -> Unit
+) {
+    val items = listOf(
+        BottomNavItem.ScreenA,
+        BottomNavItem.ScreenB, // 👈 middle (wider)
+        BottomNavItem.ScreenC
+    )
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(98.dp)
+            .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom))
+            .background(MaterialTheme.colorScheme.background),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+
+        items.forEach { item ->
+
+            val isSelected = currentRoute == item.route
+
+            val targetColor = if (isSelected) {
+                MaterialTheme.colorScheme.onBackground
+            } else {
+                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.9f)
+            }
+
+            val animatedColor by animateColorAsState(
+                targetValue = targetColor,
+                label = "nav_item_color"
+            )
+
+            val interactionSource = remember { MutableInteractionSource() }
+
+            Box(
+                modifier = Modifier
+                    .weight( 1.5f
+                       // if (item == BottomNavItem.ScreenB) 1.5f else 1f // 🔥 wider middle
+                    )
+                    .fillMaxHeight()
+                    .clickable(
+                        interactionSource = interactionSource,
+                        indication = null // 🔥 remove ripple if you want clean TikTok feel
+                    ) {
+                        onItemClick(item)
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+
+                Column(
+                    modifier = Modifier.padding(top = 6.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+
+                    Icon(
+                        painter = painterResource(
+                            id = if (isSelected) item.selectedIcon else item.unselectedIcon
+                        ),
+                        contentDescription = item.label,
+                        modifier = Modifier.size(
+                            width =  52.dp,   //       if (item == BottomNavItem.ScreenB) 32.dp else 26.dp,
+                            height = 24.dp
+                        ), // 🔥 wider icon (especially middle)
+                        tint = animatedColor
+                    )
+
+                    Spacer(modifier = Modifier.height(2.dp))
+
+                    Text(
+                        text = item.label,
+                        color = animatedColor,
+                        fontSize = 12.sp,
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                    )
+                }
+            }
+        }
+    }
+}
+
+
+
+
+
