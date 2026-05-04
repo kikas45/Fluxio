@@ -156,7 +156,7 @@ fun SeekBar(
                 modifier   = Modifier
                     .align(Alignment.BottomStart)
                     .offset(x = labelX, y = labelYUp)
-                    .background(Color(0xDD000000), RoundedCornerShape(6.dp))
+                    .background(Color.Transparent)
                     .padding(horizontal = 12.dp, vertical = 6.dp)
                     .zIndex(3f),
             )
