@@ -1,17 +1,14 @@
 package com.example.inprideexchange.ui.bottomBar.bottomBarrFeatures
 
 import android.annotation.SuppressLint
-import androidx.compose.foundation.layout.calculateEndPadding
-import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -25,14 +22,7 @@ fun MainScreen(topNavController: NavHostController) {
 
     val bottomNavController = rememberNavController()
     val navBackStackEntry by bottomNavController.currentBackStackEntryAsState()
-    val layoutDirection = LocalLayoutDirection.current
 
-    // ── Single shared SeekBarViewModel — Activity-scoped ─────────────────────
-    // Created here (Activity scope) and passed explicitly to both AppBottomBar
-    // and BottomBarNavigation → ExploreScreen → ForYouFeed → TikTokVideoItem.
-    // This guarantees both sides of the bridge read/write the same instance,
-    // regardless of what ViewModelStore the NavGraph composables would otherwise
-    // resolve to via a bare viewModel() call.
     val seekBarViewModel: SeekBarViewModel = viewModel()
 
     val bottomBarScreens = listOf(
@@ -43,6 +33,13 @@ fun MainScreen(topNavController: NavHostController) {
 
     val currentRoute = navBackStackEntry?.destination?.route
     val showBottomBar = currentRoute in bottomBarScreens
+
+    // ── Hide seekbar whenever the user is NOT on ScreenA ─────────────────────
+    LaunchedEffect(currentRoute) {
+        if (currentRoute != BottomNavItem.ScreenA.route) {
+            seekBarViewModel.updateIsVisible(false)
+        }
+    }
 
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -67,7 +64,6 @@ fun MainScreen(topNavController: NavHostController) {
                 }
             }
         ) {
-
             BottomBarNavigation(
                 navController    = bottomNavController,
                 topNavController = topNavController,
@@ -76,7 +72,3 @@ fun MainScreen(topNavController: NavHostController) {
         }
     }
 }
-
-
-
-

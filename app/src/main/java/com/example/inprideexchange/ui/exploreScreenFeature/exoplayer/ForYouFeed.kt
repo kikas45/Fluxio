@@ -4,12 +4,7 @@ import androidx.annotation.OptIn
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.only
-import androidx.compose.foundation.layout.safeDrawing
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.pager.VerticalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.*
@@ -19,12 +14,14 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.constraintlayout.compose.ConstraintLayout
+import androidx.constraintlayout.compose.Dimension
 import androidx.media3.common.util.UnstableApi
 
 @OptIn(UnstableApi::class, ExperimentalFoundationApi::class)
 @Composable
 fun ForYouFeed(
-    seekBarViewModel: SeekBarViewModel,    // ← passed in
+    seekBarViewModel: SeekBarViewModel,
 ) {
     val context   = LocalContext.current
     val feed      = rememberFeed()
@@ -36,7 +33,7 @@ fun ForYouFeed(
         pageCount   = { feed.size }
     )
 
-    val pageHeight = LocalConfiguration.current.screenHeightDp.dp
+    val pageHeight  = LocalConfiguration.current.screenHeightDp.dp
     val slotForPage = remember { mutableStateMapOf<Int, Int>() }
     var lastSettled by remember { mutableIntStateOf(0) }
 
@@ -110,9 +107,12 @@ fun ForYouFeed(
     val flingBehavior    = rememberTikTokFlingBehavior(pagerState)
     val scrollConnection = rememberSinglePageScrollConnection(pagerState, pageHeight)
 
-    Box(modifier = Modifier.fillMaxSize()
-        .background(Color.Black)
-        .nestedScroll(scrollConnection)) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black)
+            .nestedScroll(scrollConnection)
+    ) {
         VerticalPager(
             state                   = pagerState,
             modifier                = Modifier.fillMaxSize(),
@@ -129,14 +129,67 @@ fun ForYouFeed(
                 PlayerPool.NEXT    -> pool.nextPlayer
                 else               -> return@VerticalPager
             }
-            TikTokVideoItem(
-                player           = player,
-                isPlaying        = pagerState.settledPage == page,
-                isScrolling      = pagerState.isScrollInProgress,
-                onPause          = { pool.pauseCurrentPlayer() },
-                onResume         = { pool.resumeCurrentPlayer() },
-                seekBarViewModel = seekBarViewModel,   // ← explicitly passed
-            )
+
+            // ── Per-page state ────────────────────────────────────────────────
+            var actionState by remember { mutableStateOf(VideoActionState()) }
+            val video       = feed.getOrNull(page)
+            val isDragging  by seekBarViewModel.isDragging.collectAsState()
+
+            ConstraintLayout(modifier = Modifier.fillMaxSize()) {
+
+                val (videoRef, actionsRef, textRef) = createRefs()
+
+                // ── Video ─────────────────────────────────────────────────────
+                TikTokVideoItem(
+                    player           = player,
+                    isPlaying        = pagerState.settledPage == page,
+                    isScrolling      = pagerState.isScrollInProgress,
+                    onPause          = { pool.pauseCurrentPlayer() },
+                    onResume         = { pool.resumeCurrentPlayer() },
+                    seekBarViewModel = seekBarViewModel,
+                    modifier         = Modifier.constrainAs(videoRef) {
+                        top.linkTo(parent.top)
+                        bottom.linkTo(parent.bottom)
+                        start.linkTo(parent.start)
+                        end.linkTo(parent.end)
+                        width  = Dimension.fillToConstraints
+                        height = Dimension.fillToConstraints
+                    },
+                )
+
+                // ── Action buttons — hidden while dragging seekbar ────────────
+                if (!isDragging) {
+                    VideoActionButtons(
+                        state     = actionState,
+                        onLike    = {
+                            actionState = actionState.copy(isLiked = !actionState.isLiked)
+                        },
+                        onComment = { /* TODO: open comments sheet */ },
+                        onMore    = { /* TODO: show more options */ },
+                        modifier  = Modifier.constrainAs(actionsRef) {
+                            end.linkTo(parent.end, margin = 12.dp)
+                            bottom.linkTo(textRef.bottom, margin = 120.dp)
+                            top.linkTo(parent.top, margin = 20.dp)
+                            verticalBias = 1f
+                        },
+                    )
+                }
+
+                // ── Title + description — hidden while dragging seekbar ────────
+                if (!isDragging) {
+                    VideoTextOverlay(
+                        title       = "Lord of the Ring",
+                        description = "Movie number one , best action fighting scene with proper recaps ",
+                        modifier    = Modifier.constrainAs(textRef) {
+                            start.linkTo(parent.start, margin = 12.dp)
+                            end.linkTo(actionsRef.start, margin = 8.dp)
+                            bottom.linkTo(parent.bottom, margin = 120.dp)
+                            width = Dimension.fillToConstraints
+                        },
+                    )
+                }
+
+            }
         }
     }
 }
